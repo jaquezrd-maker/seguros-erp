@@ -8,7 +8,7 @@ import SearchBar from "../../components/ui/SearchBar"
 import StatCard from "../../components/ui/StatCard"
 import Modal from "../../components/ui/Modal"
 import ConfirmDialog from "../../components/ui/ConfirmDialog"
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { api } from "../../api/client"
 
 function daysLeft(dateStr: string): number {
@@ -21,8 +21,33 @@ export default function RenewalsPage() {
   const [editData, setEditData] = useState({ newEndDate: "", newPremium: "" })
   const [generating, setGenerating] = useState(false)
 
+  // Auto-generate renewals on mount
+  useEffect(() => {
+    const autoGenerate = async () => {
+      // Wait for initial data load
+      if (crud.loading) return
+
+      // If no renewals exist, generate them automatically
+      if (crud.items.length === 0) {
+        setGenerating(true)
+        try {
+          const res = await api.post<{ success: boolean; message: string; data: any }>("/renewals/generate", {})
+          if (res.success) {
+            crud.fetchItems()
+          }
+        } catch (error) {
+          console.error("Error auto-generating renewals:", error)
+        } finally {
+          setGenerating(false)
+        }
+      }
+    }
+
+    autoGenerate()
+  }, [crud.items.length, crud.loading])
+
   const handleGenerate = async () => {
-    if (!confirm("¿Generar renovaciones para todas las pólizas próximas a vencer?")) return
+    if (!confirm("¿Regenerar renovaciones para todas las pólizas próximas a vencer?")) return
     setGenerating(true)
     try {
       const res = await api.post<{ success: boolean; message: string; data: any }>("/renewals/generate", {})
@@ -33,7 +58,7 @@ export default function RenewalsPage() {
         alert("Error: " + res.message)
       }
     } catch (error: any) {
-      alert("Error al generar renovaciones: " + (error.response?.data?.message || error.message))
+      alert("Error al regenerar renovaciones: " + (error.response?.data?.message || error.message))
     } finally {
       setGenerating(false)
     }
@@ -83,7 +108,7 @@ export default function RenewalsPage() {
           className="px-4 py-2.5 rounded-xl bg-teal-600 hover:bg-teal-500 text-white font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
         >
           <RefreshCw className={`w-4 h-4 ${generating ? 'animate-spin' : ''}`} />
-          {generating ? 'Generando...' : 'Generar Renovaciones'}
+          {generating ? 'Actualizando...' : 'Actualizar Renovaciones'}
         </button>
       </div>
 
