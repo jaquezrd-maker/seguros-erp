@@ -157,6 +157,8 @@ export const policiesService = {
         endDate: new Date(data.endDate),
         premium: data.premium,
         paymentMethod: data.paymentMethod,
+        numberOfInstallments: data.numberOfInstallments,
+        beneficiaryData: data.beneficiaryData,
         autoRenew: data.autoRenew ?? false,
         notes: data.notes,
         createdBy: data.createdBy,
@@ -236,6 +238,8 @@ export const policiesService = {
     if (data.endDate !== undefined) updateData.endDate = new Date(data.endDate)
     if (data.premium !== undefined) updateData.premium = data.premium
     if (data.paymentMethod !== undefined) updateData.paymentMethod = data.paymentMethod
+    if (data.numberOfInstallments !== undefined) updateData.numberOfInstallments = data.numberOfInstallments
+    if (data.beneficiaryData !== undefined) updateData.beneficiaryData = data.beneficiaryData
     if (data.autoRenew !== undefined) updateData.autoRenew = data.autoRenew
     if (data.notes !== undefined) updateData.notes = data.notes
 
