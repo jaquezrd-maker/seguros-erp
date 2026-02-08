@@ -286,14 +286,20 @@ export class CommissionsService {
       const rule = await prisma.commissionRule.findFirst({
         where: {
           insurerId: policy.insurerId,
-          OR: [
-            { insuranceTypeId: policy.insuranceTypeId },
-            { insuranceTypeId: null }, // Regla general para la aseguradora
-          ],
           effectiveFrom: { lte: today },
-          OR: [
-            { effectiveTo: null },
-            { effectiveTo: { gte: today } },
+          AND: [
+            {
+              OR: [
+                { insuranceTypeId: policy.insuranceTypeId },
+                { insuranceTypeId: null }, // Regla general para la aseguradora
+              ],
+            },
+            {
+              OR: [
+                { effectiveTo: null },
+                { effectiveTo: { gte: today } },
+              ],
+            },
           ],
         },
         orderBy: [
