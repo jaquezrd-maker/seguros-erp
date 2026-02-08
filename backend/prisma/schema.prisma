@@ -1,0 +1,443 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+// ===================== ENUMS =====================
+
+enum ClientType {
+  FISICA
+  JURIDICA
+}
+
+enum ClientStatus {
+  ACTIVO
+  SUSPENDIDO
+  CANCELADO
+}
+
+enum InsurerStatus {
+  ACTIVA
+  INACTIVA
+}
+
+enum PolicyStatus {
+  VIGENTE
+  VENCIDA
+  CANCELADA
+  EN_RENOVACION
+}
+
+enum PaymentMethod {
+  MENSUAL
+  TRIMESTRAL
+  SEMESTRAL
+  ANUAL
+}
+
+enum PaymentStatus {
+  PENDIENTE
+  COMPLETADO
+  ANULADO
+  VENCIDO
+}
+
+enum ClaimStatus {
+  PENDIENTE
+  EN_PROCESO
+  EN_REVISION
+  APROBADO
+  RECHAZADO
+  PAGADO
+}
+
+enum ClaimPriority {
+  BAJA
+  MEDIA
+  ALTA
+  CRITICA
+}
+
+enum CommissionStatus {
+  PENDIENTE
+  PAGADA
+  ANULADA
+}
+
+enum UserRole {
+  ADMINISTRADOR
+  EJECUTIVO
+  CONTABILIDAD
+  SOLO_LECTURA
+}
+
+enum UserStatus {
+  ACTIVO
+  INACTIVO
+  BLOQUEADO
+}
+
+enum NotificationChannel {
+  EMAIL
+  WHATSAPP
+  SMS
+  SISTEMA
+}
+
+enum NotificationStatus {
+  PENDIENTE
+  ENVIADA
+  FALLIDA
+  LEIDA
+}
+
+enum RenewalStatus {
+  PENDIENTE
+  PROCESADA
+  RECHAZADA
+  VENCIDA
+}
+
+// ===================== MODELS =====================
+
+model Client {
+  id        Int          @id @default(autoincrement())
+  type      ClientType
+  name      String       @db.VarChar(200)
+  cedulaRnc String       @unique @map("cedula_rnc") @db.VarChar(20)
+  phone     String?      @db.VarChar(20)
+  phoneAlt  String?      @map("phone_alt") @db.VarChar(20)
+  email     String?      @db.VarChar(150)
+  address   String?      @db.Text
+  city      String?      @db.VarChar(100)
+  province  String?      @db.VarChar(100)
+  status    ClientStatus @default(ACTIVO)
+  notes     String?      @db.Text
+  createdBy Int?         @map("created_by")
+  createdAt DateTime     @default(now()) @map("created_at")
+  updatedAt DateTime     @updatedAt @map("updated_at")
+
+  creator  User?           @relation("ClientCreator", fields: [createdBy], references: [id])
+  policies Policy[]
+  payments Payment[]
+  contacts ClientContact[]
+
+  @@index([status])
+  @@index([cedulaRnc])
+  @@index([name])
+  @@map("clients")
+}
+
+model ClientContact {
+  id       Int     @id @default(autoincrement())
+  clientId Int     @map("client_id")
+  name     String  @db.VarChar(150)
+  role     String? @db.VarChar(100)
+  phone    String? @db.VarChar(20)
+  email    String? @db.VarChar(150)
+
+  client Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  @@map("client_contacts")
+}
+
+model Insurer {
+  id            Int           @id @default(autoincrement())
+  name          String        @db.VarChar(200)
+  rnc           String        @unique @db.VarChar(20)
+  legalName     String?       @map("legal_name") @db.VarChar(200)
+  phone         String?       @db.VarChar(20)
+  email         String?       @db.VarChar(150)
+  contactPerson String?       @map("contact_person") @db.VarChar(150)
+  address       String?       @db.Text
+  status        InsurerStatus @default(ACTIVA)
+  createdAt     DateTime      @default(now()) @map("created_at")
+  updatedAt     DateTime      @updatedAt @map("updated_at")
+
+  policies        Policy[]
+  branches        InsurerBranch[]
+  commissionRules CommissionRule[]
+
+  @@map("insurers")
+}
+
+model InsurerBranch {
+  id        Int      @id @default(autoincrement())
+  insurerId Int      @map("insurer_id")
+  name      String   @db.VarChar(150)
+  ramos     String[]
+
+  insurer Insurer @relation(fields: [insurerId], references: [id], onDelete: Cascade)
+
+  @@map("insurer_branches")
+}
+
+model InsuranceType {
+  id          Int     @id @default(autoincrement())
+  name        String  @unique @db.VarChar(100)
+  category    String? @db.VarChar(100)
+  description String? @db.Text
+
+  policies        Policy[]
+  commissionRules CommissionRule[]
+
+  @@map("insurance_types")
+}
+
+model Policy {
+  id              Int           @id @default(autoincrement())
+  policyNumber    String        @unique @map("policy_number") @db.VarChar(30)
+  clientId        Int           @map("client_id")
+  insurerId       Int           @map("insurer_id")
+  insuranceTypeId Int           @map("insurance_type_id")
+  startDate       DateTime      @map("start_date") @db.Date
+  endDate         DateTime      @map("end_date") @db.Date
+  premium         Decimal       @db.Decimal(12, 2)
+  paymentMethod   PaymentMethod @map("payment_method")
+  status          PolicyStatus  @default(VIGENTE)
+  autoRenew       Boolean       @default(false) @map("auto_renew")
+  notes           String?       @db.Text
+  createdBy       Int?          @map("created_by")
+  createdAt       DateTime      @default(now()) @map("created_at")
+  updatedAt       DateTime      @updatedAt @map("updated_at")
+
+  client        Client        @relation(fields: [clientId], references: [id])
+  insurer       Insurer       @relation(fields: [insurerId], references: [id])
+  insuranceType InsuranceType @relation(fields: [insuranceTypeId], references: [id])
+  creator       User?         @relation("PolicyCreator", fields: [createdBy], references: [id])
+  endorsements  Endorsement[]
+  claims        Claim[]
+  payments      Payment[]
+  commissions   Commission[]
+  renewals      Renewal[]
+  notifications Notification[]
+
+  @@index([clientId])
+  @@index([insurerId])
+  @@index([status])
+  @@index([endDate])
+  @@map("policies")
+}
+
+model Endorsement {
+  id            Int      @id @default(autoincrement())
+  policyId      Int      @map("policy_id")
+  type          String   @db.VarChar(100)
+  description   String?  @db.Text
+  effectiveDate DateTime @map("effective_date") @db.Date
+  premiumChange Decimal? @map("premium_change") @db.Decimal(12, 2)
+  documentUrl   String?  @map("document_url")
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  policy Policy @relation(fields: [policyId], references: [id], onDelete: Cascade)
+
+  @@map("endorsements")
+}
+
+model Claim {
+  id              Int           @id @default(autoincrement())
+  policyId        Int           @map("policy_id")
+  claimNumber     String        @unique @map("claim_number") @db.VarChar(30)
+  type            String        @db.VarChar(100)
+  dateOccurred    DateTime      @map("date_occurred") @db.Date
+  dateReported    DateTime      @default(now()) @map("date_reported")
+  description     String?       @db.Text
+  estimatedAmount Decimal?      @map("estimated_amount") @db.Decimal(12, 2)
+  approvedAmount  Decimal?      @map("approved_amount") @db.Decimal(12, 2)
+  status          ClaimStatus   @default(PENDIENTE)
+  priority        ClaimPriority @default(MEDIA)
+  assignedTo      Int?          @map("assigned_to")
+  createdAt       DateTime      @default(now()) @map("created_at")
+  updatedAt       DateTime      @updatedAt @map("updated_at")
+
+  policy   Policy      @relation(fields: [policyId], references: [id])
+  assignee User?       @relation("ClaimAssignee", fields: [assignedTo], references: [id])
+  notes    ClaimNote[]
+
+  @@index([policyId])
+  @@index([status])
+  @@map("claims")
+}
+
+model ClaimNote {
+  id         Int      @id @default(autoincrement())
+  claimId    Int      @map("claim_id")
+  userId     Int      @map("user_id")
+  note       String   @db.Text
+  isInternal Boolean  @default(true) @map("is_internal")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  claim Claim @relation(fields: [claimId], references: [id], onDelete: Cascade)
+  user  User  @relation(fields: [userId], references: [id])
+
+  @@map("claim_notes")
+}
+
+model Payment {
+  id            Int           @id @default(autoincrement())
+  policyId      Int           @map("policy_id")
+  clientId      Int           @map("client_id")
+  amount        Decimal       @db.Decimal(12, 2)
+  paymentMethod String        @map("payment_method") @db.VarChar(50)
+  paymentDate   DateTime      @map("payment_date") @db.Date
+  dueDate       DateTime?     @map("due_date") @db.Date
+  receiptNumber String?       @map("receipt_number") @db.VarChar(50)
+  status        PaymentStatus @default(PENDIENTE)
+  notes         String?       @db.Text
+  concept       String?       @db.VarChar(255)
+  reminderDays  Int?          @default(7) @map("reminder_days")
+  reminderSent  Boolean       @default(false) @map("reminder_sent")
+  createdBy     Int?          @map("created_by")
+  createdAt     DateTime      @default(now()) @map("created_at")
+
+  policy  Policy @relation(fields: [policyId], references: [id])
+  client  Client @relation(fields: [clientId], references: [id])
+  creator User?  @relation("PaymentCreator", fields: [createdBy], references: [id])
+
+  @@index([clientId])
+  @@index([policyId])
+  @@index([status])
+  @@map("payments")
+}
+
+model CommissionRule {
+  id              Int       @id @default(autoincrement())
+  insurerId       Int       @map("insurer_id")
+  insuranceTypeId Int?      @map("insurance_type_id")
+  ratePercentage  Decimal   @map("rate_percentage") @db.Decimal(5, 2)
+  minPremium      Decimal?  @map("min_premium") @db.Decimal(12, 2)
+  effectiveFrom   DateTime  @map("effective_from") @db.Date
+  effectiveTo     DateTime? @map("effective_to") @db.Date
+
+  insurer       Insurer        @relation(fields: [insurerId], references: [id])
+  insuranceType InsuranceType? @relation(fields: [insuranceTypeId], references: [id])
+  commissions   Commission[]
+
+  @@map("commission_rules")
+}
+
+model Commission {
+  id            Int              @id @default(autoincrement())
+  policyId      Int              @map("policy_id")
+  producerId    Int              @map("producer_id")
+  ruleId        Int?             @map("rule_id")
+  premiumAmount Decimal          @map("premium_amount") @db.Decimal(12, 2)
+  rate          Decimal          @db.Decimal(5, 2)
+  amount        Decimal          @db.Decimal(12, 2)
+  period        String           @db.VarChar(20)
+  status        CommissionStatus @default(PENDIENTE)
+  paidDate      DateTime?        @map("paid_date") @db.Date
+  createdAt     DateTime         @default(now()) @map("created_at")
+
+  policy   Policy          @relation(fields: [policyId], references: [id])
+  producer User            @relation("ProducerCommissions", fields: [producerId], references: [id])
+  rule     CommissionRule? @relation(fields: [ruleId], references: [id])
+
+  @@index([producerId])
+  @@index([policyId])
+  @@index([status])
+  @@map("commissions")
+}
+
+model Renewal {
+  id              Int           @id @default(autoincrement())
+  policyId        Int           @map("policy_id")
+  originalEndDate DateTime      @map("original_end_date") @db.Date
+  newEndDate      DateTime?     @map("new_end_date") @db.Date
+  newPremium      Decimal?      @map("new_premium") @db.Decimal(12, 2)
+  status          RenewalStatus @default(PENDIENTE)
+  processedBy     Int?          @map("processed_by")
+  createdAt       DateTime      @default(now()) @map("created_at")
+
+  policy    Policy @relation(fields: [policyId], references: [id])
+  processor User?  @relation("RenewalProcessor", fields: [processedBy], references: [id])
+
+  @@index([status])
+  @@map("renewals")
+}
+
+model User {
+  id              Int        @id @default(autoincrement())
+  supabaseUserId  String?    @unique @map("supabase_user_id")
+  name            String     @db.VarChar(150)
+  email           String     @unique @db.VarChar(150)
+  role            UserRole   @default(EJECUTIVO)
+  phone           String?    @db.VarChar(20)
+  status          UserStatus @default(ACTIVO)
+  lastLogin       DateTime?  @map("last_login")
+  createdAt       DateTime   @default(now()) @map("created_at")
+  updatedAt       DateTime   @updatedAt @map("updated_at")
+
+  createdClients  Client[]     @relation("ClientCreator")
+  createdPolicies Policy[]     @relation("PolicyCreator")
+  createdPayments Payment[]    @relation("PaymentCreator")
+  assignedClaims  Claim[]      @relation("ClaimAssignee")
+  claimNotes      ClaimNote[]
+  commissions     Commission[] @relation("ProducerCommissions")
+  renewals        Renewal[]    @relation("RenewalProcessor")
+  auditLogs       AuditLog[]
+  documents       Document[]
+
+  @@map("users")
+}
+
+model Document {
+  id         Int      @id @default(autoincrement())
+  entityType String   @map("entity_type") @db.VarChar(50)
+  entityId   Int      @map("entity_id")
+  name       String   @db.VarChar(255)
+  filePath   String   @map("file_path")
+  fileSize   Int?     @map("file_size")
+  mimeType   String?  @map("mime_type") @db.VarChar(100)
+  category   String?  @db.VarChar(100)
+  version    Int      @default(1)
+  uploadedBy Int      @map("uploaded_by")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  uploader User @relation(fields: [uploadedBy], references: [id])
+
+  @@index([entityType, entityId])
+  @@map("documents")
+}
+
+model Notification {
+  id        Int                @id @default(autoincrement())
+  policyId  Int?               @map("policy_id")
+  type      String             @db.VarChar(50)
+  channel   NotificationChannel
+  recipient String             @db.VarChar(200)
+  message   String             @db.Text
+  status    NotificationStatus @default(PENDIENTE)
+  sentAt    DateTime?          @map("sent_at")
+  createdAt DateTime           @default(now()) @map("created_at")
+
+  policy Policy? @relation(fields: [policyId], references: [id])
+
+  @@index([status])
+  @@map("notifications")
+}
+
+model AuditLog {
+  id         Int      @id @default(autoincrement())
+  userId     Int      @map("user_id")
+  action     String   @db.VarChar(50)
+  entityType String   @map("entity_type") @db.VarChar(50)
+  entityId   Int      @map("entity_id")
+  oldValues  Json?    @map("old_values")
+  newValues  Json?    @map("new_values")
+  ipAddress  String?  @map("ip_address") @db.VarChar(45)
+  userAgent  String?  @map("user_agent") @db.Text
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([entityType, entityId])
+  @@index([userId])
+  @@index([createdAt])
+  @@map("audit_logs")
+}

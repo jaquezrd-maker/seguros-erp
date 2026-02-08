@@ -1,0 +1,197 @@
+@import "tailwindcss";
+
+/* Light mode styles */
+.light {
+  --bg-primary: #f8fafc;
+  --bg-secondary: #ffffff;
+  --bg-tertiary: #f1f5f9;
+  --bg-card: #ffffff;
+  --bg-hover: #f1f5f9;
+  --text-primary: #0f172a;
+  --text-secondary: #334155;
+  --text-tertiary: #64748b;
+  --text-muted: #94a3b8;
+  --border-color: #e2e8f0;
+  --border-hover: #cbd5e1;
+}
+
+.light body {
+  background: var(--bg-primary) !important;
+  color: var(--text-primary) !important;
+}
+
+/* Main backgrounds */
+.light .bg-slate-950,
+.light .bg-slate-900,
+.light .bg-slate-900\/95,
+.light .bg-slate-900\/80,
+.light .bg-slate-800,
+.light .bg-slate-800\/95 {
+  background-color: var(--bg-secondary) !important;
+  border-color: var(--border-color) !important;
+}
+
+.light .bg-slate-800\/50,
+.light .bg-slate-700,
+.light .bg-slate-700\/50 {
+  background-color: var(--bg-tertiary) !important;
+}
+
+.light .bg-slate-600 {
+  background-color: #cbd5e1 !important;
+}
+
+/* Sidebar in light mode */
+.light aside.bg-slate-900 {
+  background-color: #ffffff !important;
+  border-right: 1px solid var(--border-color) !important;
+}
+
+.light aside.bg-slate-900 .border-slate-700\/50 {
+  border-color: var(--border-color) !important;
+}
+
+/* Text colors */
+.light .text-white,
+.light .text-slate-100,
+.light .text-slate-200 {
+  color: var(--text-primary) !important;
+}
+
+.light .text-slate-300,
+.light .text-slate-400 {
+  color: var(--text-secondary) !important;
+}
+
+.light .text-slate-500 {
+  color: var(--text-tertiary) !important;
+}
+
+.light .text-slate-600 {
+  color: var(--text-muted) !important;
+}
+
+/* Borders */
+.light .border-slate-800,
+.light .border-slate-700,
+.light .border-slate-700\/50,
+.light .border-slate-600 {
+  border-color: var(--border-color) !important;
+}
+
+.light .border-b.border-slate-700,
+.light .border-b.border-slate-700\/50 {
+  border-bottom-color: var(--border-color) !important;
+}
+
+.light .border-l.border-slate-700 {
+  border-left-color: var(--border-color) !important;
+}
+
+.light .divide-slate-800,
+.light .divide-slate-700 {
+  border-color: var(--border-color) !important;
+}
+
+/* Form elements */
+.light input,
+.light select,
+.light textarea {
+  background-color: var(--bg-secondary) !important;
+  color: var(--text-primary) !important;
+  border-color: var(--border-color) !important;
+}
+
+.light input:focus,
+.light select:focus,
+.light textarea:focus {
+  border-color: #0ea5e9 !important;
+  background-color: var(--bg-secondary) !important;
+}
+
+.light input::placeholder,
+.light textarea::placeholder {
+  color: var(--text-tertiary) !important;
+}
+
+/* Hover states */
+.light .hover\:bg-slate-800:hover,
+.light .hover\:bg-slate-700:hover {
+  background-color: var(--bg-hover) !important;
+}
+
+.light .hover\:bg-slate-700\/30:hover {
+  background-color: rgba(241, 245, 249, 0.6) !important;
+}
+
+.light .hover\:bg-slate-600:hover {
+  background-color: #e2e8f0 !important;
+}
+
+.light .hover\:border-slate-600:hover {
+  border-color: var(--border-hover) !important;
+}
+
+.light .hover\:text-white:hover {
+  color: var(--text-primary) !important;
+}
+
+/* Navigation menu items in light mode */
+.light button.text-slate-400 {
+  color: var(--text-tertiary) !important;
+}
+
+.light button.text-slate-400:hover {
+  color: var(--text-primary) !important;
+}
+
+/* Buttons - preserve their colors but adjust hover */
+.light button.bg-teal-600:hover,
+.light button.hover\:bg-teal-500:hover {
+  background-color: #0d9488 !important;
+}
+
+.light button.bg-blue-600:hover,
+.light button.hover\:bg-blue-500:hover {
+  background-color: #2563eb !important;
+}
+
+.light button.bg-red-600:hover,
+.light button.hover\:bg-red-500:hover {
+  background-color: #dc2626 !important;
+}
+
+/* Stat cards and special backgrounds */
+.light .bg-cyan-500\/10 {
+  background-color: rgba(6, 182, 212, 0.1) !important;
+}
+
+.light .bg-purple-500\/10 {
+  background-color: rgba(168, 85, 247, 0.1) !important;
+}
+
+.light .bg-emerald-500\/10 {
+  background-color: rgba(16, 185, 129, 0.1) !important;
+}
+
+.light .bg-rose-500\/10 {
+  background-color: rgba(244, 63, 94, 0.1) !important;
+}
+
+.light .bg-orange-500\/10 {
+  background-color: rgba(249, 115, 22, 0.1) !important;
+}
+
+/* Scrollbar for light mode */
+.light ::-webkit-scrollbar-track {
+  background: var(--bg-tertiary);
+}
+
+.light ::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+}
+
+.light ::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
