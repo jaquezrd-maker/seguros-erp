@@ -18,6 +18,7 @@ import reportRoutes from './modules/reports/reports.routes'
 import insuranceTypeRoutes from './modules/insurance-types/insuranceTypes.routes'
 import notificationRoutes from './modules/notifications/notifications.routes'
 import aiRoutes from './modules/ai/ai.routes'
+import testRoutes from './routes/test.routes'
 
 const app = express()
 
@@ -82,6 +83,7 @@ app.use('/api/reports', reportRoutes)
 app.use('/api/insurance-types', insuranceTypeRoutes)
 app.use('/api/notifications', notificationRoutes)
 app.use('/api/ai', aiRoutes)
+app.use('/api/test', testRoutes)
 
 // Error handler (must be last)
 app.use(errorHandler)

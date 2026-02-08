@@ -19,7 +19,10 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   const data = await res.json()
 
   if (!res.ok) {
-    throw new Error(data.message || 'Error en la solicitud')
+    const error: any = new Error(data.message || 'Error en la solicitud')
+    error.status = res.status
+    error.response = { status: res.status, data }
+    throw error
   }
 
   return data

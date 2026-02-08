@@ -30,6 +30,25 @@ export default function CommissionsPage() {
     await crud.patchItem(commission.id, "pay", {})
   }
 
+  // Check if there's a permission error
+  const hasPermissionError = crud.error && (crud.error.includes("permisos") || crud.error.includes("403"))
+
+  if (hasPermissionError) {
+    return (
+      <div className="space-y-6">
+        <h1 className="text-2xl font-bold text-white">Comisiones</h1>
+        <div className="bg-amber-500/10 text-amber-400 border border-amber-500/30 rounded-xl p-6 text-center">
+          <p className="text-lg font-semibold mb-2">⚠️ Acceso Restringido</p>
+          <p className="text-sm">
+            No tiene permisos para acceder al módulo de comisiones.
+            <br />
+            Este módulo requiere rol de <strong>ADMINISTRADOR</strong> o <strong>CONTABILIDAD</strong>.
+          </p>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div>
       <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 mb-6">
@@ -41,7 +60,7 @@ export default function CommissionsPage() {
 
       <SearchBar value={crud.search} onChange={crud.setSearch} placeholder="Buscar comisión..." />
 
-      {crud.error && <div className="bg-red-500/10 text-red-400 border border-red-500/30 rounded-xl p-3 mb-4 text-sm">{crud.error}</div>}
+      {crud.error && !hasPermissionError && <div className="bg-red-500/10 text-red-400 border border-red-500/30 rounded-xl p-3 mb-4 text-sm">{crud.error}</div>}
       {crud.success && <div className="bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 rounded-xl p-3 mb-4 text-sm">{crud.success}</div>}
 
       <DataTable columns={columns} data={crud.items} loading={crud.loading}
