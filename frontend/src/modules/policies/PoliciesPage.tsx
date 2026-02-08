@@ -50,9 +50,19 @@ export default function PoliciesPage() {
   const [beneficiaryData, setBeneficiaryData] = useState<BeneficiaryData | null>(null)
 
   useEffect(() => {
-    api.get<PaginatedResponse<Client>>("/clients?limit=500").then(r => setClients(r.data)).catch(() => {})
-    api.get<PaginatedResponse<Insurer>>("/insurers?limit=500").then(r => setInsurers(r.data)).catch(() => {})
-    api.get<ApiResponse<InsuranceType[]>>("/insurance-types").then(r => setInsuranceTypes(r.data)).catch(() => {})
+    api.get<PaginatedResponse<Client>>("/clients?limit=500").then(r => setClients(r.data)).catch((err) => {
+      console.error("Error cargando clientes:", err)
+    })
+    api.get<PaginatedResponse<Insurer>>("/insurers?limit=500").then(r => setInsurers(r.data)).catch((err) => {
+      console.error("Error cargando aseguradoras:", err)
+    })
+    api.get<ApiResponse<InsuranceType[]>>("/insurance-types").then(r => {
+      console.log("Tipos de seguro cargados:", r.data)
+      setInsuranceTypes(r.data)
+    }).catch((err) => {
+      console.error("Error cargando tipos de seguro:", err)
+      crud.setError("No se pudieron cargar los tipos de seguro. Por favor, recargue la página.")
+    })
   }, [])
 
   useEffect(() => {
@@ -358,6 +368,11 @@ export default function PoliciesPage() {
 
       <Modal isOpen={crud.modal === "create" || crud.modal === "edit"} onClose={crud.closeModal}
         title={crud.modal === "create" ? "Nueva Póliza" : "Editar Póliza"} size="lg">
+        {insuranceTypes.length === 0 && (
+          <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-3 mb-4">
+            <p className="text-amber-400 text-sm">⚠️ No se han cargado los tipos de seguro. Intente recargar la página.</p>
+          </div>
+        )}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <FormInput label="No. Póliza" value={crud.form.policyNumber} onChange={v => crud.updateField("policyNumber", v)} required />
           <FormInput label="Cliente" type="select" value={crud.form.clientId} onChange={v => crud.updateField("clientId", v)} required
