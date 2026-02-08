@@ -42,6 +42,11 @@ export default function ReportsPage() {
   const runReport = async () => {
     setLoading(true)
     setError("")
+    // Clear previous reports
+    setSales(null)
+    setCommissions(null)
+    setClaims(null)
+
     try {
       const qs = `startDate=${startDate}&endDate=${endDate}`
       if (reportType === "sales") {
@@ -55,10 +60,32 @@ export default function ReportsPage() {
         setClaims(r.data)
       }
     } catch (err: any) {
-      setError(err.message || "Error al generar reporte")
+      console.error('Error generating report:', err)
+      let errorMessage = "Error al generar reporte"
+
+      if (err.response?.status === 403) {
+        errorMessage = "⚠️ No tiene permisos para ver este reporte. Los reportes requieren roles específicos (ADMINISTRADOR, CONTABILIDAD, o EJECUTIVO según el tipo)."
+      } else if (err.response?.status === 401) {
+        errorMessage = "Su sesión ha expirado. Por favor inicie sesión nuevamente."
+      } else if (err.response?.data?.message) {
+        errorMessage = err.response.data.message
+      } else if (err.message) {
+        errorMessage = err.message
+      }
+
+      setError(errorMessage)
     } finally {
       setLoading(false)
     }
+  }
+
+  const getRoleInfo = () => {
+    const roleMap: Record<string, string> = {
+      sales: "Requiere rol: ADMINISTRADOR o CONTABILIDAD",
+      commissions: "Requiere rol: ADMINISTRADOR o CONTABILIDAD",
+      claims: "Requiere rol: ADMINISTRADOR o EJECUTIVO"
+    }
+    return roleMap[reportType] || ""
   }
 
   return (
@@ -81,6 +108,11 @@ export default function ReportsPage() {
             </button>
           </div>
         </div>
+        {reportType && (
+          <div className="mt-3 bg-blue-500/10 border border-blue-500/30 rounded-lg p-2">
+            <p className="text-xs text-blue-300">ℹ️ {getRoleInfo()}</p>
+          </div>
+        )}
         {error && <div className="bg-red-500/10 text-red-400 border border-red-500/30 rounded-xl p-3 mt-4 text-sm">{error}</div>}
       </div>
 
