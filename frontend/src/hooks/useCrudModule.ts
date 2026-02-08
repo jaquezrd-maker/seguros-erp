@@ -24,8 +24,8 @@ export default function useCrudModule<T extends { id: number }>({ endpoint, defa
   const [selected, setSelected] = useState<T | null>(null)
   const [form, setForm] = useState<Record<string, any>>(defaultForm)
   const [deleteTarget, setDeleteTarget] = useState<T | null>(null)
-  const debounceRef = useRef<ReturnType<typeof setTimeout>>()
-  const successTimeoutRef = useRef<ReturnType<typeof setTimeout>>()
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
+  const successTimeoutRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
 
   const fetchItems = useCallback(async (searchVal?: string, pageVal?: number) => {
     setLoading(true)
@@ -105,7 +105,7 @@ export default function useCrudModule<T extends { id: number }>({ endpoint, defa
     }
   }
 
-  const deleteItem = async () => {
+  const deleteItem = async (_param?: any) => {
     if (!deleteTarget) return
     setSaving(true)
     setError('')

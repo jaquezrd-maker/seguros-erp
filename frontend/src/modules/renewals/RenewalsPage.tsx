@@ -25,7 +25,7 @@ export default function RenewalsPage() {
     if (!confirm("¿Generar renovaciones para todas las pólizas próximas a vencer?")) return
     setGenerating(true)
     try {
-      const res = await api.post<{ success: boolean; message: string; data: any }>("/renewals/generate")
+      const res = await api.post<{ success: boolean; message: string; data: any }>("/renewals/generate", {})
       if (res.success) {
         alert(res.message)
         crud.fetchItems()
