@@ -133,12 +133,29 @@ export class PaymentsService {
         orderBy: { createdAt: 'desc' },
         select: { receiptNumber: true },
       })
-      
-      const lastNumber = lastPayment?.receiptNumber 
+
+      const lastNumber = lastPayment?.receiptNumber
         ? parseInt(lastPayment.receiptNumber.replace(/\D/g, '')) || 0
         : 0
-      
+
       receiptNumber = `REC-${String(lastNumber + 1).padStart(6, '0')}`
+    }
+
+    // Determinar el status:
+    // - Si tiene dueDate y es futura: PENDIENTE (es una cuota programada)
+    // - Si no tiene dueDate o la dueDate es pasada/hoy: COMPLETADO (es un pago que se está registrando)
+    const paymentDate = new Date(input.paymentDate)
+    const dueDate = input.dueDate ? new Date(input.dueDate) : null
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+
+    let status: 'PENDIENTE' | 'COMPLETADO' = 'COMPLETADO'
+    if (dueDate) {
+      const dueDateOnly = new Date(dueDate)
+      dueDateOnly.setHours(0, 0, 0, 0)
+      if (dueDateOnly > today) {
+        status = 'PENDIENTE'
+      }
     }
 
     const payment = await prisma.payment.create({
@@ -147,12 +164,12 @@ export class PaymentsService {
         clientId: input.clientId,
         amount: input.amount,
         paymentMethod: input.paymentMethod,
-        paymentDate: new Date(input.paymentDate),
-        dueDate: input.dueDate ? new Date(input.dueDate) : null,
+        paymentDate: paymentDate,
+        dueDate: dueDate,
         receiptNumber,
         notes: input.notes || null,
         createdBy: input.createdBy || null,
-        status: 'PENDIENTE',
+        status,
       },
       include: {
         policy: {
