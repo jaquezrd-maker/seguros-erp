@@ -203,6 +203,7 @@ model Policy {
   status               PolicyStatus  @default(VIGENTE)
   autoRenew            Boolean       @default(false) @map("auto_renew")
   beneficiaryData      Json?         @map("beneficiary_data")
+  commissionRate       Decimal?      @map("commission_rate") @db.Decimal(5, 2)
   notes                String?       @db.Text
   createdBy            Int?          @map("created_by")
   createdAt            DateTime      @default(now()) @map("created_at")

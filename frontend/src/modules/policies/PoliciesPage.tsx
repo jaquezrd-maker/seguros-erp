@@ -25,7 +25,7 @@ interface Payment {
 
 const defaultForm = {
   policyNumber: "", clientId: "", insurerId: "", insuranceTypeId: "",
-  startDate: "", endDate: "", premium: "", paymentMethod: "MENSUAL", numberOfInstallments: 1, autoRenew: false, notes: ""
+  startDate: "", endDate: "", premium: "", paymentMethod: "MENSUAL", numberOfInstallments: 1, autoRenew: false, commissionRate: "", notes: ""
 }
 
 interface PaymentSchedule {
@@ -146,6 +146,7 @@ export default function PoliciesPage() {
       insuranceTypeId: Number(crud.form.insuranceTypeId),
       premium: Number(crud.form.premium),
       numberOfInstallments: Number(crud.form.numberOfInstallments),
+      commissionRate: crud.form.commissionRate ? Number(crud.form.commissionRate) : null,
       beneficiaryData: beneficiaryData || undefined,
       paymentSchedule: paymentSchedule.length > 0 ? paymentSchedule : undefined,
     }
@@ -430,6 +431,8 @@ export default function PoliciesPage() {
           <FormInput label="Fecha Inicio" type="date" value={crud.form.startDate} onChange={v => crud.updateField("startDate", v)} required />
           <FormInput label="Fecha Fin" type="date" value={crud.form.endDate} onChange={v => crud.updateField("endDate", v)} required />
           <FormInput label="Prima (DOP)" type="number" value={crud.form.premium} onChange={v => crud.updateField("premium", v)} required />
+          <FormInput label="% Comisión (opcional)" type="number" step="0.01" value={crud.form.commissionRate || ""} onChange={v => crud.updateField("commissionRate", v)}
+            placeholder="Dejar vacío para usar la regla por defecto" />
           <FormInput label="Número de Cuotas" type="select" value={crud.form.numberOfInstallments} onChange={v => crud.updateField("numberOfInstallments", v)} required
             options={[
               { value: 1, label: "1 cuota (Anual)" },

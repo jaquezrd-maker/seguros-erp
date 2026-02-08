@@ -252,4 +252,90 @@ export class CommissionsService {
 
     return summary
   }
+
+  async generateFromPayment(policyId: number, paymentAmount: number, period: string) {
+    // Obtener la póliza con todos sus datos relevantes
+    const policy = await prisma.policy.findUnique({
+      where: { id: policyId },
+      include: {
+        insurer: true,
+        insuranceType: true,
+        creator: true,
+      },
+    })
+
+    if (!policy) {
+      throw new Error('Póliza no encontrada')
+    }
+
+    if (!policy.createdBy) {
+      // No hay productor asignado, no se genera comisión
+      return null
+    }
+
+    // Determinar la tasa de comisión a usar
+    let commissionRate: number
+    let ruleId: number | null = null
+
+    if (policy.commissionRate) {
+      // Usar la tasa personalizada de la póliza
+      commissionRate = Number(policy.commissionRate)
+    } else {
+      // Buscar la regla de comisión aplicable
+      const today = new Date()
+      const rule = await prisma.commissionRule.findFirst({
+        where: {
+          insurerId: policy.insurerId,
+          OR: [
+            { insuranceTypeId: policy.insuranceTypeId },
+            { insuranceTypeId: null }, // Regla general para la aseguradora
+          ],
+          effectiveFrom: { lte: today },
+          OR: [
+            { effectiveTo: null },
+            { effectiveTo: { gte: today } },
+          ],
+        },
+        orderBy: [
+          { insuranceTypeId: 'desc' }, // Priorizar reglas específicas por tipo
+          { effectiveFrom: 'desc' },
+        ],
+      })
+
+      if (!rule) {
+        // No hay regla de comisión aplicable
+        return null
+      }
+
+      commissionRate = Number(rule.ratePercentage)
+      ruleId = rule.id
+    }
+
+    // Calcular el monto de la comisión
+    const commissionAmount = (paymentAmount * commissionRate) / 100
+
+    // Crear la comisión
+    const commission = await prisma.commission.create({
+      data: {
+        policyId: policy.id,
+        producerId: policy.createdBy,
+        ruleId,
+        premiumAmount: paymentAmount,
+        rate: commissionRate,
+        amount: commissionAmount,
+        period,
+        status: 'PENDIENTE',
+      },
+      include: {
+        policy: {
+          select: { id: true, policyNumber: true },
+        },
+        producer: {
+          select: { id: true, name: true },
+        },
+      },
+    })
+
+    return commission
+  }
 }

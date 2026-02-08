@@ -84,6 +84,7 @@ export interface Policy {
   status: PolicyStatus
   autoRenew: boolean
   beneficiaryData?: BeneficiaryData
+  commissionRate?: number
   notes?: string
   createdAt: string
   updatedAt: string

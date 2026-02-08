@@ -1,5 +1,6 @@
 import prisma from '../../config/database'
 import { PaymentStatus } from '@prisma/client'
+import { CommissionsService } from '../commissions/commissions.service'
 
 interface PaymentFilters {
   clientId?: number
@@ -223,6 +224,16 @@ export class PaymentsService {
             remainingAmount = 0
           }
         }
+      }
+
+      // Generar comisión automáticamente para este pago
+      try {
+        const commissionsService = new CommissionsService()
+        const period = `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}`
+        await commissionsService.generateFromPayment(input.policyId, input.amount, period)
+      } catch (error) {
+        console.error('Error generando comisión automática:', error)
+        // No lanzar el error para no bloquear el pago
       }
     }
 
