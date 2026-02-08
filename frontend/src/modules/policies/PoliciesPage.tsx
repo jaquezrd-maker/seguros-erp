@@ -74,6 +74,43 @@ export default function PoliciesPage() {
     { key: "client", label: "Cliente", render: (_: any, row: Policy) => row.client?.name || "—" },
     { key: "insurer", label: "Aseguradora", render: (_: any, row: Policy) => row.insurer?.name || "—" },
     { key: "insuranceType", label: "Ramo", render: (_: any, row: Policy) => row.insuranceType?.name || "—" },
+    {
+      key: "beneficiary",
+      label: "Bien Asegurado",
+      render: (_: any, row: Policy) => {
+        if (!row.beneficiaryData) return "—"
+        const b = row.beneficiaryData
+
+        if (b.type === 'vehicle') {
+          return (
+            <div className="text-xs">
+              <div className="font-medium text-slate-200">{b.vehiclePlate || b.vehicleMake}</div>
+              {b.vehicleModel && <div className="text-slate-500">{b.vehicleModel} {b.vehicleYear || ''}</div>}
+            </div>
+          )
+        }
+
+        if (b.type === 'person' || b.type === 'health') {
+          return (
+            <div className="text-xs">
+              <div className="font-medium text-slate-200">{b.personName || '—'}</div>
+              {b.personCedula && <div className="text-slate-500">{b.personCedula}</div>}
+            </div>
+          )
+        }
+
+        if (b.type === 'property') {
+          return (
+            <div className="text-xs">
+              <div className="font-medium text-slate-200">{b.propertyType || 'Propiedad'}</div>
+              {b.propertyAddress && <div className="text-slate-500 truncate max-w-[200px]">{b.propertyAddress}</div>}
+            </div>
+          )
+        }
+
+        return "—"
+      }
+    },
     { key: "premium", label: "Prima", render: (v: number) => fmt(v) },
     { key: "endDate", label: "Vencimiento", render: (v: string) => fmtDate(v) },
     { key: "status", label: "Estado", render: (v: string) => <StatusBadge status={v} /> },
