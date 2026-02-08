@@ -213,7 +213,16 @@ export default function PoliciesPage() {
       {crud.error && <div className="bg-red-500/10 text-red-400 border border-red-500/30 rounded-xl p-3 mb-4 text-sm">{crud.error}</div>}
 
       <DataTable columns={columns} data={crud.items} loading={crud.loading}
-        onView={handleViewPolicy} onEdit={handleEdit} onDelete={crud.askDelete} />
+        onView={handleViewPolicy} onEdit={handleEdit} onDelete={crud.askDelete}
+        getRowClassName={(policy: Policy) => {
+          if (policy.hasOverduePayments) {
+            return "bg-red-500/10 hover:bg-red-500/20 border-l-4 border-red-500/50"
+          }
+          if (policy.hasPendingPayments) {
+            return "bg-amber-500/10 hover:bg-amber-500/20 border-l-4 border-amber-500/50"
+          }
+          return ""
+        }} />
 
       <Modal isOpen={crud.modal === "view"} onClose={crud.closeModal} title="Detalle de Póliza" size="xl">
         {crud.selected && (

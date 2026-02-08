@@ -19,9 +19,7 @@ interface CreatePolicyData {
   endDate: string
   premium: number
   paymentMethod: PaymentMethod
-  numberOfInstallments?: number
   autoRenew?: boolean
-  beneficiaryData?: any
   notes?: string
   createdBy?: number
   paymentSchedule?: Array<{
@@ -41,9 +39,7 @@ interface UpdatePolicyData {
   endDate?: string
   premium?: number
   paymentMethod?: PaymentMethod
-  numberOfInstallments?: number
   autoRenew?: boolean
-  beneficiaryData?: any
   notes?: string
 }
 
@@ -81,6 +77,16 @@ export const policiesService = {
           client: { select: { id: true, name: true, cedulaRnc: true } },
           insurer: { select: { id: true, name: true } },
           insuranceType: { select: { id: true, name: true, category: true } },
+          payments: {
+            select: {
+              id: true,
+              status: true,
+              dueDate: true,
+            },
+            where: {
+              status: 'PENDIENTE',
+            },
+          },
         },
         orderBy: { createdAt: 'desc' },
         skip,
@@ -95,8 +101,26 @@ export const policiesService = {
       }),
     ])
 
+    // Add payment status flags to each policy
+    const today = new Date()
+    const dataWithPaymentStatus = data.map(policy => {
+      const pendingPayments = policy.payments || []
+      const hasPendingPayments = pendingPayments.length > 0
+      const hasOverduePayments = pendingPayments.some(payment =>
+        payment.dueDate && new Date(payment.dueDate) < today
+      )
+
+      // Remove payments array from response and add flags
+      const { payments, ...policyData } = policy
+      return {
+        ...policyData,
+        hasPendingPayments,
+        hasOverduePayments,
+      }
+    })
+
     return {
-      data,
+      data: dataWithPaymentStatus,
       pagination: {
         total,
         page,
@@ -157,8 +181,6 @@ export const policiesService = {
         endDate: new Date(data.endDate),
         premium: data.premium,
         paymentMethod: data.paymentMethod,
-        numberOfInstallments: data.numberOfInstallments,
-        beneficiaryData: data.beneficiaryData,
         autoRenew: data.autoRenew ?? false,
         notes: data.notes,
         createdBy: data.createdBy,
@@ -194,16 +216,7 @@ export const policiesService = {
   },
 
   async update(id: number, data: UpdatePolicyData) {
-    const existing = await prisma.policy.findUnique({
-      where: { id },
-      include: {
-        payments: {
-          where: {
-            status: { in: ['PENDIENTE', 'COMPLETADO'] }
-          }
-        }
-      }
-    })
+    const existing = await prisma.policy.findUnique({ where: { id } })
 
     if (!existing) {
       throw new Error('Póliza no encontrado')
@@ -218,16 +231,6 @@ export const policiesService = {
       }
     }
 
-    // Validar cambio de método de pago si hay pagos registrados
-    if (data.paymentMethod !== undefined && data.paymentMethod !== existing.paymentMethod) {
-      const hasPayments = existing.payments && existing.payments.length > 0
-      if (hasPayments) {
-        throw new Error(
-          `No se puede cambiar el método de pago porque la póliza ya tiene ${existing.payments.length} pago(s) registrado(s). Debe anular los pagos primero.`
-        )
-      }
-    }
-
     const updateData: Prisma.PolicyUpdateInput = {}
 
     if (data.policyNumber !== undefined) updateData.policyNumber = data.policyNumber
@@ -238,8 +241,6 @@ export const policiesService = {
     if (data.endDate !== undefined) updateData.endDate = new Date(data.endDate)
     if (data.premium !== undefined) updateData.premium = data.premium
     if (data.paymentMethod !== undefined) updateData.paymentMethod = data.paymentMethod
-    if (data.numberOfInstallments !== undefined) updateData.numberOfInstallments = data.numberOfInstallments
-    if (data.beneficiaryData !== undefined) updateData.beneficiaryData = data.beneficiaryData
     if (data.autoRenew !== undefined) updateData.autoRenew = data.autoRenew
     if (data.notes !== undefined) updateData.notes = data.notes
 
@@ -276,11 +277,113 @@ export const policiesService = {
     return policy
   },
 
-  async delete(id: number) {
-    const policy = await prisma.policy.findUnique({ where: { id } })
+  async delete(id: number, permanent: boolean = false) {
+    const policy = await prisma.policy.findUnique({ 
+      where: { id },
+      include: {
+        payments: {
+          where: {
+            status: 'PENDIENTE'
+          }
+        },
+        claims: {
+          where: {
+            status: { in: ['PENDIENTE', 'EN_PROCESO', 'EN_REVISION'] }
+          }
+        },
+        commissions: {
+          where: {
+            status: 'PENDIENTE'
+          }
+        },
+        renewals: {
+          where: {
+            status: 'PENDIENTE'
+          }
+        },
+      }
+    })
 
     if (!policy) {
       throw new Error('Póliza no encontrada')
+    }
+
+    // Hard delete: eliminación permanente de la base de datos
+    if (permanent) {
+      // Verificar si tiene datos relacionados activos que impedirían la eliminación
+      const pendingPayments = policy.payments.length
+      const activeClaims = policy.claims.length
+      const pendingCommissions = policy.commissions.length
+      const pendingRenewals = policy.renewals.length
+
+      const hasRelatedData = 
+        pendingPayments > 0 ||
+        activeClaims > 0 ||
+        pendingCommissions > 0 ||
+        pendingRenewals > 0
+
+      if (hasRelatedData) {
+        // Construir mensaje detallado
+        const details: string[] = []
+        if (pendingPayments > 0) details.push(`${pendingPayments} pago(s) pendiente(s)`)
+        if (activeClaims > 0) details.push(`${activeClaims} siniestro(s) activo(s)`)
+        if (pendingCommissions > 0) details.push(`${pendingCommissions} comisión(es) pendiente(s)`)
+        if (pendingRenewals > 0) details.push(`${pendingRenewals} renovación(es) pendiente(s)`)
+
+        throw new Error(
+          `No se puede eliminar permanentemente esta póliza porque tiene datos activos relacionados: ${details.join(', ')}. Primero debe eliminar o anular estos registros, o usar la cancelación.`
+        )
+      }
+
+      // Eliminar todos los datos relacionados que no son pendientes/activos
+      // Esto incluye pagos completados/anulados, siniestros rechazados, etc.
+      await prisma.$transaction(async (tx) => {
+        // Eliminar notificaciones relacionadas
+        await tx.notification.deleteMany({ where: { policyId: id } })
+        
+        // Eliminar renovaciones procesadas/rechazadas/vencidas
+        await tx.renewal.deleteMany({ 
+          where: { 
+            policyId: id,
+            status: { not: 'PENDIENTE' }
+          } 
+        })
+        
+        // Eliminar comisiones pagadas/anuladas
+        await tx.commission.deleteMany({ 
+          where: { 
+            policyId: id,
+            status: { not: 'PENDIENTE' }
+          } 
+        })
+        
+        // Eliminar pagos completados/anulados
+        await tx.payment.deleteMany({ 
+          where: { 
+            policyId: id,
+            status: { not: 'PENDIENTE' }
+          } 
+        })
+        
+        // Eliminar siniestros rechazados/aprobados/pagados
+        await tx.claim.deleteMany({ 
+          where: { 
+            policyId: id,
+            status: { notIn: ['PENDIENTE', 'EN_PROCESO', 'EN_REVISION'] }
+          } 
+        })
+        
+        // Los endorsements se eliminan automáticamente por CASCADE
+        // Finalmente eliminar la póliza
+        await tx.policy.delete({ where: { id } })
+      })
+
+      // Retornar un objeto con la estructura esperada
+      return {
+        id: policy.id,
+        policyNumber: policy.policyNumber,
+        status: 'ELIMINADA' as any
+      }
     }
 
     // Soft delete: cambiar estado a CANCELADA
@@ -293,98 +396,6 @@ export const policiesService = {
         insuranceType: { select: { id: true, name: true, category: true } },
       },
     })
-  },
-
-  async permanentDelete(id: number) {
-    // Ejecutar toda la lógica dentro de una transacción
-    const result = await prisma.$transaction(async (tx) => {
-      // 1. Verificar que la póliza existe y obtener sus datos
-      const policy = await tx.policy.findUnique({
-        where: { id },
-        include: {
-          _count: {
-            select: {
-              payments: true,
-              claims: true,
-              commissions: true,
-              renewals: true,
-              endorsements: true,
-              notifications: true,
-            }
-          }
-        }
-      })
-
-      if (!policy) {
-        throw new Error('Póliza no encontrada')
-      }
-
-      // 2. Eliminar notificaciones
-      await tx.notification.deleteMany({ where: { policyId: id } })
-
-      // 3. Eliminar renovaciones
-      await tx.renewal.deleteMany({ where: { policyId: id } })
-
-      // 4. Eliminar comisiones
-      await tx.commission.deleteMany({ where: { policyId: id } })
-
-      // 5. Eliminar pagos
-      await tx.payment.deleteMany({ where: { policyId: id } })
-
-      // 6. Eliminar siniestros (y sus documentos y notas)
-      const claims = await tx.claim.findMany({
-        where: { policyId: id },
-        select: { id: true }
-      })
-
-      for (const claim of claims) {
-        // Eliminar documentos del claim
-        await tx.document.deleteMany({
-          where: {
-            entityType: 'CLAIM',
-            entityId: claim.id
-          }
-        })
-        // Eliminar notas del claim
-        await tx.claimNote.deleteMany({ where: { claimId: claim.id } })
-      }
-      await tx.claim.deleteMany({ where: { policyId: id } })
-
-      // 7. Eliminar endosos (y sus documentos)
-      const endorsements = await tx.endorsement.findMany({
-        where: { policyId: id },
-        select: { id: true }
-      })
-
-      for (const endorsement of endorsements) {
-        // Eliminar documentos del endorsement
-        await tx.document.deleteMany({
-          where: {
-            entityType: 'ENDORSEMENT',
-            entityId: endorsement.id
-          }
-        })
-      }
-      await tx.endorsement.deleteMany({ where: { policyId: id } })
-
-      // 8. Finalmente eliminar la póliza
-      await tx.policy.delete({ where: { id } })
-
-      // Retornar los datos para el mensaje de éxito
-      return {
-        policyNumber: policy.policyNumber,
-        deleted: {
-          payments: policy._count.payments,
-          claims: policy._count.claims,
-          commissions: policy._count.commissions,
-          renewals: policy._count.renewals,
-          endorsements: policy._count.endorsements,
-          notifications: policy._count.notifications,
-        }
-      }
-    })
-
-    return result
   },
 
   async getExpiring(days: number = 30) {

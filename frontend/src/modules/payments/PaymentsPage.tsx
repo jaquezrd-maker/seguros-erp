@@ -169,7 +169,19 @@ export default function PaymentsPage() {
       {crud.error && <div className="bg-red-500/10 text-red-400 border border-red-500/30 rounded-xl p-3 mb-4 text-sm">{crud.error}</div>}
 
       <DataTable columns={columns} data={crud.items} loading={crud.loading}
-        onView={crud.openView} onEdit={handleEdit} onDelete={crud.askDelete} />
+        onView={crud.openView} onEdit={handleEdit} onDelete={crud.askDelete}
+        getRowClassName={(payment: Payment) => {
+          const today = new Date()
+          const dueDate = payment.dueDate ? new Date(payment.dueDate) : null
+
+          if (payment.status === 'VENCIDO' || (payment.status === 'PENDIENTE' && dueDate && dueDate < today)) {
+            return "bg-red-500/10 hover:bg-red-500/20 border-l-4 border-red-500/50"
+          }
+          if (payment.status === 'PENDIENTE') {
+            return "bg-amber-500/10 hover:bg-amber-500/20 border-l-4 border-amber-500/50"
+          }
+          return ""
+        }} />
 
       <Modal isOpen={crud.modal === "view"} onClose={crud.closeModal} title="Detalle del Pago" size="md">
         {crud.selected && (

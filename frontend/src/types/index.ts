@@ -90,6 +90,8 @@ export interface Policy {
   client?: Client
   insurer?: Insurer
   insuranceType?: InsuranceType
+  hasPendingPayments?: boolean
+  hasOverduePayments?: boolean
 }
 
 export interface BeneficiaryData {

@@ -14,9 +14,10 @@ interface DataTableProps<T> {
   onDelete?: (row: T) => void
   actions?: boolean
   loading?: boolean
+  getRowClassName?: (row: T) => string
 }
 
-export default function DataTable<T extends Record<string, any>>({ columns, data, onView, onEdit, onDelete, actions = true, loading = false }: DataTableProps<T>) {
+export default function DataTable<T extends Record<string, any>>({ columns, data, onView, onEdit, onDelete, actions = true, loading = false, getRowClassName }: DataTableProps<T>) {
   return (
     <div className="overflow-x-auto rounded-xl border border-slate-700/50">
       <table className="w-full text-sm">
@@ -45,8 +46,13 @@ export default function DataTable<T extends Record<string, any>>({ columns, data
               </td>
             </tr>
           ) : (
-            data.map((row, ri) => (
-              <tr key={ri} className="hover:bg-slate-800/30 transition-colors">
+            data.map((row, ri) => {
+              const baseClassName = "hover:bg-slate-800/30 transition-colors"
+              const customClassName = getRowClassName ? getRowClassName(row) : ""
+              const className = customClassName ? `${baseClassName} ${customClassName}` : baseClassName
+
+              return (
+              <tr key={ri} className={className}>
                 {columns.map((col, ci) => (
                   <td key={ci} className="px-4 py-3 text-slate-300 whitespace-nowrap">
                     {col.render ? col.render(row[col.key], row) : row[col.key]}
@@ -62,7 +68,9 @@ export default function DataTable<T extends Record<string, any>>({ columns, data
                   </td>
                 )}
               </tr>
-            ))
+              )
+            })
+          )
           )}
         </tbody>
       </table>
