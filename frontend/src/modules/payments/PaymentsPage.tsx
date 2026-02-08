@@ -17,14 +17,24 @@ const defaultForm = {
   paymentDate: new Date().toISOString().split("T")[0], dueDate: "", receiptNumber: "", notes: ""
 }
 
+interface PolicyBalance {
+  policyId: number
+  policyNumber: string
+  pendingAmount: number
+  overdueAmount: number
+  pendingPayments: number
+  overduePayments: number
+}
+
 export default function PaymentsPage() {
   const [statusFilter, setStatusFilter] = useState<string>("")
-  const crud = useCrudModule<Payment>({ 
-    endpoint: `/payments${statusFilter ? `?status=${statusFilter}` : ""}`, 
-    defaultForm 
+  const crud = useCrudModule<Payment>({
+    endpoint: `/payments${statusFilter ? `?status=${statusFilter}` : ""}`,
+    defaultForm
   })
   const [policies, setPolicies] = useState<Policy[]>([])
   const [clientBalance, setClientBalance] = useState<{ pending: number; completed: number; total: number } | null>(null)
+  const [policyBalances, setPolicyBalances] = useState<PolicyBalance[]>([])
 
   useEffect(() => {
     api.get<PaginatedResponse<Policy>>("/policies?limit=500&status=VIGENTE").then(r => setPolicies(r.data)).catch(() => {})
@@ -45,19 +55,62 @@ export default function PaymentsPage() {
     { key: "status", label: "Estado", render: (v: string) => <StatusBadge status={v} /> },
   ]
 
-  const handlePolicyChange = (policyId: string) => {
+  const handlePolicyChange = async (policyId: string) => {
     crud.updateField("policyId", policyId)
     const policy = policies.find(p => p.id === Number(policyId))
     if (policy) {
       crud.updateField("clientId", String(policy.clientId))
+
       // Fetch client balance
-      api.get<{ success: boolean; data: any }>(`/clients/${policy.clientId}`)
-        .then(r => {
-          if (r.data.balance) {
-            setClientBalance(r.data.balance)
+      try {
+        const clientResp = await api.get<{ success: boolean; data: any }>(`/clients/${policy.clientId}`)
+        if (clientResp.data.balance) {
+          setClientBalance(clientResp.data.balance)
+        }
+      } catch (error) {
+        console.error('Error fetching client balance:', error)
+      }
+
+      // Fetch all pending payments for client's policies
+      try {
+        const paymentsResp = await api.get<{ success: boolean; data: Payment[] }>(`/payments?clientId=${policy.clientId}&status=PENDIENTE&limit=500`)
+        const pendingPayments = paymentsResp.data || []
+
+        // Group by policy and calculate balances
+        const balanceMap = new Map<number, PolicyBalance>()
+        const today = new Date()
+
+        for (const payment of pendingPayments) {
+          if (!payment.policyId) continue
+
+          const existing = balanceMap.get(payment.policyId) || {
+            policyId: payment.policyId,
+            policyNumber: payment.policy?.policyNumber || "",
+            pendingAmount: 0,
+            overdueAmount: 0,
+            pendingPayments: 0,
+            overduePayments: 0
           }
-        })
-        .catch(() => {})
+
+          const amount = Number(payment.amount)
+          const isOverdue = payment.dueDate && new Date(payment.dueDate) < today
+
+          existing.pendingAmount += amount
+          existing.pendingPayments += 1
+
+          if (isOverdue) {
+            existing.overdueAmount += amount
+            existing.overduePayments += 1
+          }
+
+          balanceMap.set(payment.policyId, existing)
+        }
+
+        setPolicyBalances(Array.from(balanceMap.values()))
+      } catch (error) {
+        console.error('Error fetching policy balances:', error)
+        setPolicyBalances([])
+      }
     }
   }
 
@@ -68,6 +121,12 @@ export default function PaymentsPage() {
       paymentDate: toDateInput(item.paymentDate),
       dueDate: toDateInput(item.dueDate),
     }))
+  }
+
+  const handleCloseModal = () => {
+    crud.closeModal()
+    setPolicyBalances([])
+    setClientBalance(null)
   }
 
   const handleSave = async () => {
@@ -212,25 +271,50 @@ export default function PaymentsPage() {
         )}
       </Modal>
 
-      <Modal isOpen={crud.modal === "create" || crud.modal === "edit"} onClose={crud.closeModal}
+      <Modal isOpen={crud.modal === "create" || crud.modal === "edit"} onClose={handleCloseModal}
         title={crud.modal === "create" ? "Registrar Pago" : "Editar Pago"} size="lg">
-        {clientBalance && crud.modal === "create" && (
-          <div className="mb-4 p-3 bg-slate-700/50 rounded-lg">
-            <p className="text-xs text-slate-400 mb-2">Balance del Cliente:</p>
-            <div className="grid grid-cols-3 gap-3 text-sm">
-              <div>
-                <p className="text-xs text-slate-500">Pendiente</p>
-                <p className="text-amber-400 font-semibold">{fmt(clientBalance.pending)}</p>
-              </div>
-              <div>
-                <p className="text-xs text-slate-500">Completado</p>
-                <p className="text-emerald-400 font-semibold">{fmt(clientBalance.completed)}</p>
-              </div>
-              <div>
-                <p className="text-xs text-slate-500">Total Pendiente</p>
-                <p className="text-red-400 font-semibold">{fmt(clientBalance.total)}</p>
-              </div>
+        {crud.modal === "create" && policyBalances.length > 0 && (
+          <div className="mb-4 p-4 bg-slate-700/50 rounded-lg border border-slate-600/50">
+            <p className="text-sm text-slate-300 font-medium mb-3">Deudas por Póliza:</p>
+            <div className="space-y-2 max-h-48 overflow-y-auto">
+              {policyBalances.map((pb) => (
+                <div
+                  key={pb.policyId}
+                  onClick={() => handlePolicyChange(String(pb.policyId))}
+                  className={`p-3 rounded-lg cursor-pointer transition-colors ${
+                    Number(crud.form.policyId) === pb.policyId
+                      ? "bg-teal-600/20 border border-teal-500/50"
+                      : "bg-slate-800/50 hover:bg-slate-800 border border-slate-700"
+                  }`}
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex-1">
+                      <p className="text-sm font-medium text-slate-200">{pb.policyNumber}</p>
+                      <p className="text-xs text-slate-400 mt-0.5">
+                        {pb.pendingPayments} cuota{pb.pendingPayments !== 1 ? "s" : ""} pendiente{pb.pendingPayments !== 1 ? "s" : ""}
+                        {pb.overduePayments > 0 && (
+                          <span className="text-red-400 ml-2">
+                            ({pb.overduePayments} vencida{pb.overduePayments !== 1 ? "s" : ""})
+                          </span>
+                        )}
+                      </p>
+                    </div>
+                    <div className="text-right ml-4">
+                      <p className="text-base font-bold text-amber-400">{fmt(pb.pendingAmount)}</p>
+                      {pb.overdueAmount > 0 && (
+                        <p className="text-xs text-red-400 mt-0.5">{fmt(pb.overdueAmount)} vencido</p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ))}
             </div>
+            {clientBalance && (
+              <div className="mt-3 pt-3 border-t border-slate-600 flex justify-between items-center">
+                <span className="text-xs text-slate-400">Total Pendiente del Cliente:</span>
+                <span className="text-sm font-bold text-red-400">{fmt(clientBalance.pending)}</span>
+              </div>
+            )}
           </div>
         )}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -250,7 +334,7 @@ export default function PaymentsPage() {
         </div>
         {crud.error && <div className="bg-red-500/10 text-red-400 border border-red-500/30 rounded-xl p-3 mt-4 text-sm">{crud.error}</div>}
         <div className="flex justify-end gap-3 mt-6">
-          <button onClick={crud.closeModal} className="px-4 py-2.5 rounded-xl bg-slate-700 hover:bg-slate-600 text-white text-sm transition-colors">Cancelar</button>
+          <button onClick={handleCloseModal} className="px-4 py-2.5 rounded-xl bg-slate-700 hover:bg-slate-600 text-white text-sm transition-colors">Cancelar</button>
           <button onClick={handleSave} disabled={crud.saving}
             className="px-5 py-2.5 rounded-xl bg-teal-600 hover:bg-teal-500 text-white text-sm font-medium transition-colors disabled:opacity-50">
             {crud.saving ? "Guardando..." : "Guardar"}
