@@ -19,7 +19,9 @@ interface CreatePolicyData {
   endDate: string
   premium: number
   paymentMethod: PaymentMethod
+  numberOfInstallments?: number
   autoRenew?: boolean
+  beneficiaryData?: any
   notes?: string
   createdBy?: number
   paymentSchedule?: Array<{
@@ -39,7 +41,9 @@ interface UpdatePolicyData {
   endDate?: string
   premium?: number
   paymentMethod?: PaymentMethod
+  numberOfInstallments?: number
   autoRenew?: boolean
+  beneficiaryData?: any
   notes?: string
 }
 

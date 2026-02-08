@@ -38,7 +38,9 @@ export default function useCrudModule<T extends { id: number }>({ endpoint, defa
       params.set('page', String(p))
       params.set('limit', '20')
       const qs = params.toString()
-      const res = await api.get<PaginatedResponse<T>>(`${endpoint}?${qs}`)
+      // Check if endpoint already has query params
+      const separator = endpoint.includes('?') ? '&' : '?'
+      const res = await api.get<PaginatedResponse<T>>(`${endpoint}${separator}${qs}`)
       setItems(res.data)
       setTotal(res.pagination?.total ?? res.data.length)
       if (res.summary) setSummary(res.summary)

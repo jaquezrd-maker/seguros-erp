@@ -81,6 +81,22 @@ export default function PaymentsPage() {
     else if (crud.modal === "edit" && crud.selected) await crud.updateItem(crud.selected.id, data)
   }
 
+  const handleCompletePayment = async (payment: Payment) => {
+    try {
+      crud.setError("")
+      crud.setSuccess("")
+      await api.put(`/payments/${payment.id}`, {
+        status: "COMPLETADO",
+        paymentDate: new Date().toISOString().split("T")[0]
+      })
+      crud.setSuccess(`Pago de ${fmt(payment.amount)} completado exitosamente`)
+      crud.fetchItems()
+      crud.closeModal()
+    } catch (error: any) {
+      crud.setError(error.message || "Error al completar el pago")
+    }
+  }
+
   const totalCobrado = crud.summary?.totalCobrado ?? 0
   const totalPendiente = crud.summary?.totalPendiente ?? 0
   const completedCount = crud.summary?.completedCount ?? 0
@@ -157,7 +173,7 @@ export default function PaymentsPage() {
 
       <Modal isOpen={crud.modal === "view"} onClose={crud.closeModal} title="Detalle del Pago" size="md">
         {crud.selected && (
-          <div className="space-y-3 text-sm">
+          <div className="space-y-4 text-sm">
             <div className="grid grid-cols-2 gap-4">
               <div><span className="text-slate-400">Recibo:</span> <span className="text-white ml-2">{crud.selected.receiptNumber || "—"}</span></div>
               <div><span className="text-slate-400">Estado:</span> <span className="ml-2"><StatusBadge status={crud.selected.status} /></span></div>
@@ -168,6 +184,18 @@ export default function PaymentsPage() {
               <div><span className="text-slate-400">Fecha Pago:</span> <span className="text-white ml-2">{fmtDate(crud.selected.paymentDate)}</span></div>
               <div><span className="text-slate-400">Fecha Vencimiento:</span> <span className="text-white ml-2">{fmtDate(crud.selected.dueDate)}</span></div>
             </div>
+
+            {crud.selected.status === "PENDIENTE" && (
+              <div className="pt-4 border-t border-slate-700">
+                <button
+                  onClick={() => handleCompletePayment(crud.selected!)}
+                  className="w-full px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-medium transition-colors flex items-center justify-center gap-2"
+                >
+                  <CreditCard size={16} />
+                  <span>Realizar Pago</span>
+                </button>
+              </div>
+            )}
           </div>
         )}
       </Modal>

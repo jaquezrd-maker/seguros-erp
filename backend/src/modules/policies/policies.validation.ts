@@ -17,6 +17,7 @@ const policyBodySchema = z.object({
   paymentMethod: paymentMethodEnum,
   numberOfInstallments: z.number().int().min(1, 'Mínimo 1 cuota').max(6, 'Máximo 6 cuotas').optional(),
   autoRenew: z.boolean().optional(),
+  beneficiaryData: z.any().optional(),
   notes: z.string().optional(),
   paymentSchedule: z.array(z.object({
     month: z.number(),

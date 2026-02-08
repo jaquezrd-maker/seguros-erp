@@ -83,12 +83,40 @@ export interface Policy {
   numberOfInstallments?: number
   status: PolicyStatus
   autoRenew: boolean
+  beneficiaryData?: BeneficiaryData
   notes?: string
   createdAt: string
   updatedAt: string
   client?: Client
   insurer?: Insurer
   insuranceType?: InsuranceType
+}
+
+export interface BeneficiaryData {
+  type: 'vehicle' | 'person' | 'property' | 'health' | 'other'
+  // Datos para vehículos
+  vehicleMake?: string
+  vehicleModel?: string
+  vehicleYear?: number
+  vehiclePlate?: string
+  vehicleChasis?: string
+  vehicleColor?: string
+  vehicleValue?: number
+  // Datos para personas
+  personName?: string
+  personCedula?: string
+  personBirthDate?: string
+  personRelationship?: string
+  personPhone?: string
+  // Datos para propiedades
+  propertyAddress?: string
+  propertyType?: string
+  propertyValue?: number
+  propertyDescription?: string
+  // Datos para salud
+  healthConditions?: string
+  // Otros datos flexibles
+  [key: string]: any
 }
 
 export interface Claim {

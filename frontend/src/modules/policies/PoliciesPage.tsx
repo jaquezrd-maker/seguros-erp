@@ -2,7 +2,7 @@ import { useState, useEffect } from "react"
 import { Shield, CheckCircle, Clock } from "lucide-react"
 import useCrudModule from "../../hooks/useCrudModule"
 import { api } from "../../api/client"
-import type { Policy, Client, Insurer, InsuranceType, ApiResponse, PaginatedResponse } from "../../types"
+import type { Policy, Client, Insurer, InsuranceType, ApiResponse, PaginatedResponse, BeneficiaryData } from "../../types"
 import { fmt, fmtDate, toDateInput } from "../../utils/format"
 import StatusBadge from "../../components/ui/StatusBadge"
 import DataTable from "../../components/ui/DataTable"
@@ -12,6 +12,7 @@ import Modal from "../../components/ui/Modal"
 import FormInput from "../../components/ui/FormInput"
 import ConfirmDialog from "../../components/ui/ConfirmDialog"
 import PaymentPlanConfig from "./PaymentPlanConfig"
+import BeneficiaryForm from "./BeneficiaryForm"
 
 interface Payment {
   id: number
@@ -46,6 +47,7 @@ export default function PoliciesPage() {
   const [policyPayments, setPolicyPayments] = useState<Payment[]>([])
   const [loadingPayments, setLoadingPayments] = useState(false)
   const [permanentDeleteTarget, setPermanentDeleteTarget] = useState<Policy | null>(null)
+  const [beneficiaryData, setBeneficiaryData] = useState<BeneficiaryData | null>(null)
 
   useEffect(() => {
     api.get<PaginatedResponse<Client>>("/clients?limit=500").then(r => setClients(r.data)).catch(() => {})
@@ -75,6 +77,12 @@ export default function PoliciesPage() {
       endDate: toDateInput(item.endDate),
       numberOfInstallments: item.numberOfInstallments || 1,
     }))
+    // Cargar datos del beneficiario si existen
+    if (item.beneficiaryData) {
+      setBeneficiaryData(item.beneficiaryData)
+    } else {
+      setBeneficiaryData(null)
+    }
     // Cargar pagos de la póliza para validar cambio de método de pago
     setLoadingPayments(true)
     api.get<PaginatedResponse<Payment>>(`/payments?policyId=${item.id}&limit=100`)
@@ -91,6 +99,7 @@ export default function PoliciesPage() {
       insuranceTypeId: Number(crud.form.insuranceTypeId),
       premium: Number(crud.form.premium),
       numberOfInstallments: Number(crud.form.numberOfInstallments),
+      beneficiaryData: beneficiaryData || undefined,
       paymentSchedule: paymentSchedule.length > 0 ? paymentSchedule : undefined,
     }
     if (crud.modal === "create") await crud.createItem(data)
@@ -209,6 +218,51 @@ export default function PoliciesPage() {
               <div><span className="text-slate-400">Vigencia:</span> <span className="text-white ml-2">{fmtDate(crud.selected.startDate)} — {fmtDate(crud.selected.endDate)}</span></div>
               <div><span className="text-slate-400">Plan de Pago:</span> <span className="text-white ml-2">{crud.selected.numberOfInstallments ? `${crud.selected.numberOfInstallments} cuota${crud.selected.numberOfInstallments > 1 ? 's' : ''} mensual${crud.selected.numberOfInstallments > 1 ? 'es' : ''}` : crud.selected.paymentMethod}</span></div>
             </div>
+
+            {crud.selected.beneficiaryData && (
+              <div className="border-t border-slate-700 pt-6">
+                <h3 className="text-base font-semibold text-white mb-4">Datos del Bien Asegurado</h3>
+                <div className="bg-slate-900/50 rounded-xl p-4 border border-slate-700/50">
+                  <div className="grid grid-cols-2 gap-4 text-sm">
+                    {crud.selected.beneficiaryData.type === 'vehicle' && (
+                      <>
+                        {crud.selected.beneficiaryData.vehicleMake && <div><span className="text-slate-400">Marca:</span> <span className="text-white ml-2">{crud.selected.beneficiaryData.vehicleMake}</span></div>}
+                        {crud.selected.beneficiaryData.vehicleModel && <div><span className="text-slate-400">Modelo:</span> <span className="text-white ml-2">{crud.selected.beneficiaryData.vehicleModel}</span></div>}
+                        {crud.selected.beneficiaryData.vehicleYear && <div><span className="text-slate-400">Año:</span> <span className="text-white ml-2">{crud.selected.beneficiaryData.vehicleYear}</span></div>}
+                        {crud.selected.beneficiaryData.vehiclePlate && <div><span className="text-slate-400">Placa:</span> <span className="text-white ml-2">{crud.selected.beneficiaryData.vehiclePlate}</span></div>}
+                        {crud.selected.beneficiaryData.vehicleChasis && <div><span className="text-slate-400">Chasis:</span> <span className="text-white ml-2">{crud.selected.beneficiaryData.vehicleChasis}</span></div>}
+                        {crud.selected.beneficiaryData.vehicleColor && <div><span className="text-slate-400">Color:</span> <span className="text-white ml-2">{crud.selected.beneficiaryData.vehicleColor}</span></div>}
+                        {crud.selected.beneficiaryData.vehicleValue && <div><span className="text-slate-400">Valor:</span> <span className="text-white ml-2">{fmt(crud.selected.beneficiaryData.vehicleValue)}</span></div>}
+                      </>
+                    )}
+                    {crud.selected.beneficiaryData.type === 'person' && (
+                      <>
+                        {crud.selected.beneficiaryData.personName && <div><span className="text-slate-400">Nombre:</span> <span className="text-white ml-2">{crud.selected.beneficiaryData.personName}</span></div>}
+                        {crud.selected.beneficiaryData.personCedula && <div><span className="text-slate-400">Cédula:</span> <span className="text-white ml-2">{crud.selected.beneficiaryData.personCedula}</span></div>}
+                        {crud.selected.beneficiaryData.personBirthDate && <div><span className="text-slate-400">Fecha de Nacimiento:</span> <span className="text-white ml-2">{fmtDate(crud.selected.beneficiaryData.personBirthDate)}</span></div>}
+                        {crud.selected.beneficiaryData.personRelationship && <div><span className="text-slate-400">Parentesco:</span> <span className="text-white ml-2">{crud.selected.beneficiaryData.personRelationship}</span></div>}
+                        {crud.selected.beneficiaryData.personPhone && <div><span className="text-slate-400">Teléfono:</span> <span className="text-white ml-2">{crud.selected.beneficiaryData.personPhone}</span></div>}
+                      </>
+                    )}
+                    {crud.selected.beneficiaryData.type === 'property' && (
+                      <>
+                        {crud.selected.beneficiaryData.propertyAddress && <div className="col-span-2"><span className="text-slate-400">Dirección:</span> <span className="text-white ml-2">{crud.selected.beneficiaryData.propertyAddress}</span></div>}
+                        {crud.selected.beneficiaryData.propertyType && <div><span className="text-slate-400">Tipo:</span> <span className="text-white ml-2">{crud.selected.beneficiaryData.propertyType}</span></div>}
+                        {crud.selected.beneficiaryData.propertyValue && <div><span className="text-slate-400">Valor:</span> <span className="text-white ml-2">{fmt(crud.selected.beneficiaryData.propertyValue)}</span></div>}
+                        {crud.selected.beneficiaryData.propertyDescription && <div className="col-span-2"><span className="text-slate-400">Descripción:</span> <span className="text-white ml-2">{crud.selected.beneficiaryData.propertyDescription}</span></div>}
+                      </>
+                    )}
+                    {crud.selected.beneficiaryData.type === 'health' && (
+                      <>
+                        {crud.selected.beneficiaryData.personName && <div><span className="text-slate-400">Asegurado:</span> <span className="text-white ml-2">{crud.selected.beneficiaryData.personName}</span></div>}
+                        {crud.selected.beneficiaryData.personBirthDate && <div><span className="text-slate-400">Fecha de Nacimiento:</span> <span className="text-white ml-2">{fmtDate(crud.selected.beneficiaryData.personBirthDate)}</span></div>}
+                        {crud.selected.beneficiaryData.healthConditions && <div className="col-span-2"><span className="text-slate-400">Condiciones:</span> <span className="text-white ml-2">{crud.selected.beneficiaryData.healthConditions}</span></div>}
+                      </>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
 
             <div className="border-t border-slate-700 pt-6">
               <h3 className="text-base font-semibold text-white mb-4 flex items-center gap-2">
@@ -348,7 +402,18 @@ export default function PoliciesPage() {
             />
           </div>
         )}
-        
+
+        {crud.form.insuranceTypeId && (
+          <div className="mt-6 border-t border-slate-700 pt-6">
+            <h3 className="text-sm font-semibold text-white mb-4">Datos del Bien Asegurado</h3>
+            <BeneficiaryForm
+              insuranceTypeName={insuranceTypes.find(t => t.id === Number(crud.form.insuranceTypeId))?.name || ""}
+              value={beneficiaryData}
+              onChange={setBeneficiaryData}
+            />
+          </div>
+        )}
+
         {crud.error && <div className="bg-red-500/10 text-red-400 border border-red-500/30 rounded-xl p-3 mt-4 text-sm">{crud.error}</div>}
         <div className="flex justify-end gap-3 mt-6">
           <button onClick={crud.closeModal} className="px-4 py-2.5 rounded-xl bg-slate-700 hover:bg-slate-600 text-white text-sm transition-colors">Cancelar</button>

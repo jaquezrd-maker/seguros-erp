@@ -190,21 +190,23 @@ model InsuranceType {
 }
 
 model Policy {
-  id              Int           @id @default(autoincrement())
-  policyNumber    String        @unique @map("policy_number") @db.VarChar(30)
-  clientId        Int           @map("client_id")
-  insurerId       Int           @map("insurer_id")
-  insuranceTypeId Int           @map("insurance_type_id")
-  startDate       DateTime      @map("start_date") @db.Date
-  endDate         DateTime      @map("end_date") @db.Date
-  premium         Decimal       @db.Decimal(12, 2)
-  paymentMethod   PaymentMethod @map("payment_method")
-  status          PolicyStatus  @default(VIGENTE)
-  autoRenew       Boolean       @default(false) @map("auto_renew")
-  notes           String?       @db.Text
-  createdBy       Int?          @map("created_by")
-  createdAt       DateTime      @default(now()) @map("created_at")
-  updatedAt       DateTime      @updatedAt @map("updated_at")
+  id                   Int           @id @default(autoincrement())
+  policyNumber         String        @unique @map("policy_number") @db.VarChar(30)
+  clientId             Int           @map("client_id")
+  insurerId            Int           @map("insurer_id")
+  insuranceTypeId      Int           @map("insurance_type_id")
+  startDate            DateTime      @map("start_date") @db.Date
+  endDate              DateTime      @map("end_date") @db.Date
+  premium              Decimal       @db.Decimal(12, 2)
+  paymentMethod        PaymentMethod @map("payment_method")
+  numberOfInstallments Int?          @map("number_of_installments")
+  status               PolicyStatus  @default(VIGENTE)
+  autoRenew            Boolean       @default(false) @map("auto_renew")
+  beneficiaryData      Json?         @map("beneficiary_data")
+  notes                String?       @db.Text
+  createdBy            Int?          @map("created_by")
+  createdAt            DateTime      @default(now()) @map("created_at")
+  updatedAt            DateTime      @updatedAt @map("updated_at")
 
   client        Client        @relation(fields: [clientId], references: [id])
   insurer       Insurer       @relation(fields: [insurerId], references: [id])
