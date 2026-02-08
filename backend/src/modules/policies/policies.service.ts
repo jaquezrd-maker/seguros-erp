@@ -398,6 +398,77 @@ export const policiesService = {
     })
   },
 
+  async permanentDelete(id: number) {
+    const policy = await prisma.policy.findUnique({
+      where: { id },
+      include: {
+        payments: true,
+        claims: true,
+        commissions: true,
+        renewals: true,
+        notifications: true,
+        endorsements: true,
+      },
+    })
+
+    if (!policy) {
+      throw new Error('Póliza no encontrada')
+    }
+
+    if (policy.status !== 'CANCELADA') {
+      throw new Error('Solo se pueden eliminar permanentemente pólizas canceladas')
+    }
+
+    const deleted = {
+      notifications: 0,
+      renewals: 0,
+      commissions: 0,
+      payments: 0,
+      claims: 0,
+      endorsements: 0,
+    }
+
+    await prisma.$transaction(async (tx) => {
+      // Eliminar notificaciones
+      const notifResult = await tx.notification.deleteMany({ where: { policyId: id } })
+      deleted.notifications = notifResult.count
+
+      // Eliminar renovaciones
+      const renewalResult = await tx.renewal.deleteMany({ where: { policyId: id } })
+      deleted.renewals = renewalResult.count
+
+      // Eliminar comisiones
+      const commResult = await tx.commission.deleteMany({ where: { policyId: id } })
+      deleted.commissions = commResult.count
+
+      // Eliminar pagos
+      const payResult = await tx.payment.deleteMany({ where: { policyId: id } })
+      deleted.payments = payResult.count
+
+      // Eliminar notas de siniestros
+      await tx.claimNote.deleteMany({
+        where: { claim: { policyId: id } },
+      })
+
+      // Eliminar siniestros
+      const claimResult = await tx.claim.deleteMany({ where: { policyId: id } })
+      deleted.claims = claimResult.count
+
+      // Eliminar endosos
+      const endorResult = await tx.endorsement.deleteMany({ where: { policyId: id } })
+      deleted.endorsements = endorResult.count
+
+      // Eliminar la póliza
+      await tx.policy.delete({ where: { id } })
+    })
+
+    return {
+      id: policy.id,
+      policyNumber: policy.policyNumber,
+      deleted,
+    }
+  },
+
   async getExpiring(days: number = 30) {
     const today = new Date()
     const futureDate = new Date()
