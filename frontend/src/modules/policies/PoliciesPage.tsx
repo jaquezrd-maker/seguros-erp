@@ -431,7 +431,7 @@ export default function PoliciesPage() {
           <FormInput label="Fecha Inicio" type="date" value={crud.form.startDate} onChange={v => crud.updateField("startDate", v)} required />
           <FormInput label="Fecha Fin" type="date" value={crud.form.endDate} onChange={v => crud.updateField("endDate", v)} required />
           <FormInput label="Prima (DOP)" type="number" value={crud.form.premium} onChange={v => crud.updateField("premium", v)} required />
-          <FormInput label="% Comisión (opcional)" type="number" step="0.01" value={crud.form.commissionRate || ""} onChange={v => crud.updateField("commissionRate", v)}
+          <FormInput label="% Comisión (opcional)" type="number" value={crud.form.commissionRate || ""} onChange={v => crud.updateField("commissionRate", v)}
             placeholder="Dejar vacío para usar la regla por defecto" />
           <FormInput label="Número de Cuotas" type="select" value={crud.form.numberOfInstallments} onChange={v => crud.updateField("numberOfInstallments", v)} required
             options={[
