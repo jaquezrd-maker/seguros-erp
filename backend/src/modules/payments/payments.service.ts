@@ -181,6 +181,51 @@ export class PaymentsService {
       },
     })
 
+    // Si el pago está COMPLETADO (pago manual recibido), aplicar a cuotas pendientes
+    if (status === 'COMPLETADO') {
+      // Buscar pagos pendientes de esta póliza ordenados por fecha de vencimiento
+      const pendingPayments = await prisma.payment.findMany({
+        where: {
+          policyId: input.policyId,
+          status: 'PENDIENTE',
+          id: { not: payment.id }, // Excluir el pago que acabamos de crear
+        },
+        orderBy: {
+          dueDate: 'asc', // Más antiguos primero
+        },
+      })
+
+      if (pendingPayments.length > 0) {
+        let remainingAmount = input.amount
+
+        // Anular pagos pendientes hasta cubrir el monto recibido
+        for (const pendingPayment of pendingPayments) {
+          if (remainingAmount <= 0) break
+
+          const pendingAmount = Number(pendingPayment.amount)
+
+          if (remainingAmount >= pendingAmount) {
+            // El pago cubre esta cuota completa, anularla
+            await prisma.payment.update({
+              where: { id: pendingPayment.id },
+              data: { status: 'ANULADO', notes: `Aplicado a pago manual ${receiptNumber}` },
+            })
+            remainingAmount -= pendingAmount
+          } else {
+            // El pago cubre parcialmente esta cuota, reducir su monto
+            await prisma.payment.update({
+              where: { id: pendingPayment.id },
+              data: {
+                amount: pendingAmount - remainingAmount,
+                notes: `Reducido por pago parcial ${receiptNumber}`,
+              },
+            })
+            remainingAmount = 0
+          }
+        }
+      }
+    }
+
     return payment
   }
 
