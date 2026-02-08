@@ -13,7 +13,12 @@ const paymentBodySchema = z.object({
   }),
   dueDate: z
     .string()
-    .refine((val) => !isNaN(Date.parse(val)), {
+    .refine((val) => {
+      // Permitir vacío, null, undefined
+      if (!val || val === '') return true
+      // Si tiene valor, validar que sea una fecha válida
+      return !isNaN(Date.parse(val))
+    }, {
       message: 'Fecha de vencimiento inválida',
     })
     .optional()
