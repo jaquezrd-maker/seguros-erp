@@ -7,8 +7,10 @@
     }
   ],
   "functions": {
-    "api/**/*.ts": {
-      "includeFiles": "node_modules/pdfkit/**"
+    "api/index.ts": {
+      "memory": 1024,
+      "maxDuration": 30,
+      "includeFiles": "node_modules/pdfkit/js/data/**"
     }
   }
 }
