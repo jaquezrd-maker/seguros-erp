@@ -41,3 +41,10 @@ export const addNoteSchema = z.object({
     isInternal: z.boolean().default(true).optional(),
   }),
 })
+
+export const sendEmailSchema = z.object({
+  body: z.object({
+    recipients: z.array(z.enum(['client', 'insurer', 'internal', 'all'])).min(1, 'Al menos un destinatario es requerido'),
+    includeAttachment: z.boolean().default(false),
+  }),
+})

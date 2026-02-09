@@ -1,5 +1,8 @@
 import prisma from '../config/database'
 import { sendEmail } from '../config/email'
+import { policyExpiredEmail, policyExpiringSoonEmail } from '../utils/emailTemplates'
+import { generatePolicyPDF } from './pdf/policy.pdf'
+import { formatDate } from '../utils/pdf'
 
 interface PaymentReminderData {
   clientName: string
@@ -189,6 +192,198 @@ export class NotificationService {
       console.log(`Processed payment reminders: ${payments.length} payments checked`)
     } catch (error) {
       console.error('Error processing payment reminders:', error)
+      throw error
+    }
+  }
+
+  /**
+   * Send policy expiration reminder (already expired)
+   */
+  static async sendPolicyExpiredReminder(policyId: number): Promise<boolean> {
+    try {
+      const policy = await prisma.policy.findUnique({
+        where: { id: policyId },
+        include: {
+          client: { select: { name: true, email: true } },
+          insurer: { select: { name: true } },
+          insuranceType: { select: { name: true } },
+        },
+      })
+
+      if (!policy) {
+        console.log(`Policy ${policyId} not found`)
+        return false
+      }
+
+      if (!policy.client?.email) {
+        console.log(`Client for policy ${policy.policyNumber} has no email`)
+        return false
+      }
+
+      // Generate email template
+      const emailTemplate = policyExpiredEmail({
+        clientName: policy.client.name,
+        policyNumber: policy.policyNumber,
+        endDate: formatDate(policy.endDate),
+        insurerName: policy.insurer?.name || '',
+        insuranceType: policy.insuranceType?.name || '',
+        premium: Number(policy.premium),
+      })
+
+      // Send email
+      await sendEmail({
+        to: policy.client.email,
+        subject: emailTemplate.subject,
+        html: emailTemplate.html,
+      })
+
+      console.log(`Policy expired reminder sent for policy ${policy.policyNumber}`)
+      return true
+    } catch (error) {
+      console.error('Error sending policy expired reminder:', error)
+      return false
+    }
+  }
+
+  /**
+   * Send policy expiring soon reminder
+   */
+  static async sendPolicyExpiringReminder(policyId: number, daysLeft: number): Promise<boolean> {
+    try {
+      const policy = await prisma.policy.findUnique({
+        where: { id: policyId },
+        include: {
+          client: { select: { name: true, email: true } },
+          insurer: { select: { name: true } },
+          insuranceType: { select: { name: true } },
+        },
+      })
+
+      if (!policy) {
+        console.log(`Policy ${policyId} not found`)
+        return false
+      }
+
+      if (!policy.client?.email) {
+        console.log(`Client for policy ${policy.policyNumber} has no email`)
+        return false
+      }
+
+      // Generate email template
+      const emailTemplate = policyExpiringSoonEmail({
+        clientName: policy.client.name,
+        policyNumber: policy.policyNumber,
+        endDate: formatDate(policy.endDate),
+        daysLeft,
+        insurerName: policy.insurer?.name || '',
+        insuranceType: policy.insuranceType?.name || '',
+        premium: Number(policy.premium),
+      })
+
+      // Send email
+      await sendEmail({
+        to: policy.client.email,
+        subject: emailTemplate.subject,
+        html: emailTemplate.html,
+      })
+
+      console.log(`Policy expiring reminder sent for policy ${policy.policyNumber} (${daysLeft} days left)`)
+      return true
+    } catch (error) {
+      console.error('Error sending policy expiring reminder:', error)
+      return false
+    }
+  }
+
+  /**
+   * Process policy expiration reminders - Check for policies that need reminders
+   */
+  static async processPolicyExpirationReminders(): Promise<void> {
+    try {
+      const today = new Date()
+      today.setHours(0, 0, 0, 0)
+
+      const thirtyDaysFromNow = new Date(today)
+      thirtyDaysFromNow.setDate(thirtyDaysFromNow.getDate() + 30)
+
+      // Get all VIGENTE policies
+      const policies = await prisma.policy.findMany({
+        where: {
+          status: 'VIGENTE',
+        },
+        include: {
+          client: { select: { name: true, email: true } },
+          insurer: { select: { name: true } },
+          insuranceType: { select: { name: true } },
+        },
+      })
+
+      let expiredCount = 0
+      let expiringCount = 0
+
+      for (const policy of policies) {
+        const endDate = new Date(policy.endDate)
+        endDate.setHours(0, 0, 0, 0)
+
+        const daysUntilExpiry = Math.ceil((endDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24))
+
+        // Check if already sent notification today
+        const existingNotification = await prisma.notification.findFirst({
+          where: {
+            policyId: policy.id,
+            type: daysUntilExpiry < 0 ? 'POLICY_EXPIRED' : 'POLICY_EXPIRING',
+            createdAt: {
+              gte: today,
+            },
+          },
+        })
+
+        if (existingNotification) {
+          console.log(`Notification already sent today for policy ${policy.policyNumber}`)
+          continue
+        }
+
+        // Policy already expired
+        if (daysUntilExpiry < 0) {
+          const sent = await this.sendPolicyExpiredReminder(policy.id)
+          if (sent) {
+            await prisma.notification.create({
+              data: {
+                type: 'POLICY_EXPIRED',
+                policyId: policy.id,
+                channel: 'EMAIL',
+                recipient: policy.client?.email || '',
+                message: `Póliza ${policy.policyNumber} vencida`,
+                status: 'ENVIADA',
+                sentAt: new Date(),
+              },
+            })
+            expiredCount++
+          }
+        }
+        // Policy expiring within 30 days
+        else if (daysUntilExpiry >= 0 && daysUntilExpiry <= 30) {
+          const sent = await this.sendPolicyExpiringReminder(policy.id, daysUntilExpiry)
+          if (sent) {
+            await prisma.notification.create({
+              data: {
+                type: 'POLICY_EXPIRING',
+                policyId: policy.id,
+                channel: 'EMAIL',
+                recipient: policy.client?.email || '',
+                message: `Póliza ${policy.policyNumber} vence en ${daysUntilExpiry} días`,
+                status: 'ENVIADA',
+                sentAt: new Date(),
+              },
+            })
+            expiringCount++
+          }
+        }
+      }
+
+      console.log(`Processed policy expiration reminders: ${expiredCount} expired, ${expiringCount} expiring soon`)
+    } catch (error) {
+      console.error('Error processing policy expiration reminders:', error)
       throw error
     }
   }

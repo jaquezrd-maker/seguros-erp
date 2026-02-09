@@ -3,7 +3,7 @@ import { PaymentsController } from './payments.controller'
 import { authMiddleware } from '../../middleware/auth.middleware'
 import { rbacMiddleware } from '../../middleware/rbac.middleware'
 import { validate } from '../../middleware/validation.middleware'
-import { createPaymentSchema, updatePaymentSchema } from './payments.validation'
+import { createPaymentSchema, updatePaymentSchema, sendEmailSchema } from './payments.validation'
 
 const router = Router()
 const controller = new PaymentsController()
@@ -40,6 +40,17 @@ router.post(
   '/policy/:policyId/regenerate',
   rbacMiddleware(['ADMINISTRADOR', 'EJECUTIVO']),
   controller.regenerateMissingPayments
+)
+
+// GET /payments/:id/pdf — Generate payment receipt PDF (must be before /:id)
+router.get('/:id/pdf', controller.generatePDF)
+
+// POST /payments/:id/email — Send payment email (must be before /:id)
+router.post(
+  '/:id/email',
+  rbacMiddleware(['ADMINISTRADOR', 'EJECUTIVO', 'CONTABILIDAD']),
+  validate(sendEmailSchema),
+  controller.sendEmail
 )
 
 // GET /payments/:id — all roles

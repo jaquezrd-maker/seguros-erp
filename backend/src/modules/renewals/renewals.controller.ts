@@ -1,5 +1,9 @@
 import { Request, Response } from 'express'
 import { RenewalsService } from './renewals.service'
+import { generateRenewalNoticePDF } from '../../services/pdf/renewal.pdf'
+import { sendEmail } from '../../config/email'
+import { renewalNoticeEmail } from '../../utils/emailTemplates'
+import { formatDate } from '../../utils/pdf'
 
 const renewalsService = new RenewalsService()
 
@@ -168,4 +172,102 @@ export class RenewalsController {
         message: error.message || 'Error al generar renovaciones',
       })
     }
-  }}
+  }
+
+  async generatePDF(req: Request, res: Response) {
+    try {
+      const id = Number(req.params.id)
+      const pdfBuffer = await generateRenewalNoticePDF(id)
+
+      res.setHeader('Content-Type', 'application/pdf')
+      res.setHeader('Content-Disposition', `attachment; filename="renovacion-${id}.pdf"`)
+      res.send(pdfBuffer)
+    } catch (error: any) {
+      return res.status(500).json({
+        success: false,
+        message: error.message || 'Error al generar PDF',
+      })
+    }
+  }
+
+  async sendEmail(req: Request, res: Response) {
+    try {
+      const id = Number(req.params.id)
+      const { recipients, includeAttachment } = req.body
+
+      // Fetch renewal data
+      const renewal = await renewalsService.findById(id)
+
+      if (!renewal) {
+        return res.status(404).json({
+          success: false,
+          message: 'Renovación no encontrada',
+        })
+      }
+
+      // Determine email recipients
+      const emailRecipients: string[] = []
+      if (recipients.includes('client') && renewal.policy?.client?.email) {
+        emailRecipients.push(renewal.policy.client.email)
+      }
+      if (recipients.includes('insurer') && renewal.policy?.insurer?.email) {
+        emailRecipients.push(renewal.policy.insurer.email)
+      }
+      if (recipients.includes('internal')) {
+        const internalEmail = process.env.INTERNAL_EMAIL || 'admin@seguropro.com'
+        emailRecipients.push(internalEmail)
+      }
+
+      if (emailRecipients.length === 0) {
+        return res.status(400).json({
+          success: false,
+          message: 'No se encontraron destinatarios con email válido',
+        })
+      }
+
+      // Generate PDF attachment if requested
+      let attachments = undefined
+      if (includeAttachment) {
+        const pdfBuffer = await generateRenewalNoticePDF(id)
+        attachments = [
+          {
+            filename: `renovacion-${renewal.policy?.policyNumber}.pdf`,
+            content: pdfBuffer,
+            contentType: 'application/pdf',
+          },
+        ]
+      }
+
+      // Generate email content
+      const emailTemplate = renewalNoticeEmail({
+        clientName: renewal.policy?.client?.name || 'Cliente',
+        policyNumber: renewal.policy?.policyNumber || '',
+        originalEndDate: formatDate(renewal.originalEndDate),
+        newEndDate: renewal.newEndDate ? formatDate(renewal.newEndDate) : undefined,
+        newPremium: renewal.newPremium ? Number(renewal.newPremium) : undefined,
+        currentPremium: Number(renewal.policy?.premium || 0),
+        insurerName: renewal.policy?.insurer?.name || '',
+        insuranceType: renewal.policy?.insuranceType?.name || '',
+        status: renewal.status,
+      })
+
+      // Send email
+      await sendEmail({
+        to: emailRecipients,
+        subject: emailTemplate.subject,
+        html: emailTemplate.html,
+        attachments,
+      })
+
+      return res.json({
+        success: true,
+        message: `Email enviado a ${emailRecipients.length} destinatario(s)`,
+      })
+    } catch (error: any) {
+      return res.status(500).json({
+        success: false,
+        message: error.message || 'Error al enviar email',
+      })
+    }
+  }
+}

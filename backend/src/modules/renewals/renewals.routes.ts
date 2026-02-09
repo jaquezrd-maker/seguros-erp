@@ -3,7 +3,7 @@ import { RenewalsController } from './renewals.controller'
 import { authMiddleware } from '../../middleware/auth.middleware'
 import { rbacMiddleware } from '../../middleware/rbac.middleware'
 import { validate } from '../../middleware/validation.middleware'
-import { processRenewalSchema } from './renewals.validation'
+import { processRenewalSchema, sendEmailSchema } from './renewals.validation'
 
 const router = Router()
 const controller = new RenewalsController()
@@ -22,6 +22,17 @@ router.get('/pending', adminEjecutivo, controller.pending)
 
 // POST /renewals/generate — ADMIN, EJECUTIVO
 router.post('/generate', adminEjecutivo, controller.generate)
+
+// GET /renewals/:id/pdf — Generate renewal PDF (must be before /:id)
+router.get('/:id/pdf', adminEjecutivo, controller.generatePDF)
+
+// POST /renewals/:id/email — Send renewal email (must be before /:id)
+router.post(
+  '/:id/email',
+  adminEjecutivo,
+  validate(sendEmailSchema),
+  controller.sendEmail
+)
 
 // GET /renewals/:id — ADMIN, EJECUTIVO
 router.get('/:id', adminEjecutivo, controller.getById)

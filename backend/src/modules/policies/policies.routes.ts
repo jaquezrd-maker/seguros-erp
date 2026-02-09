@@ -3,7 +3,7 @@ import { authMiddleware } from '../../middleware/auth.middleware'
 import { rbacMiddleware } from '../../middleware/rbac.middleware'
 import { validate } from '../../middleware/validation.middleware'
 import { policiesController } from './policies.controller'
-import { createPolicySchema, updatePolicySchema, updateStatusSchema } from './policies.validation'
+import { createPolicySchema, updatePolicySchema, updateStatusSchema, sendEmailSchema } from './policies.validation'
 
 const router = Router()
 
@@ -45,6 +45,21 @@ router.delete(
   '/:id/permanent',
   rbacMiddleware(['ADMINISTRADOR']),
   policiesController.permanentDelete
+)
+
+// GET /:id/pdf - Generate policy PDF (must be before /:id)
+router.get(
+  '/:id/pdf',
+  rbacMiddleware(['ADMINISTRADOR', 'EJECUTIVO', 'SOLO_LECTURA']),
+  policiesController.generatePDF
+)
+
+// POST /:id/email - Send policy email (must be before /:id)
+router.post(
+  '/:id/email',
+  rbacMiddleware(['ADMINISTRADOR', 'EJECUTIVO']),
+  validate(sendEmailSchema),
+  policiesController.sendEmail
 )
 
 // GET /:id - Get policy by ID with full details

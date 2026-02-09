@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react"
-import { CreditCard } from "lucide-react"
+import { CreditCard, Printer, Mail } from "lucide-react"
 import useCrudModule from "../../hooks/useCrudModule"
 import { api } from "../../api/client"
 import type { Payment, Policy, PaginatedResponse } from "../../types"
@@ -11,6 +11,7 @@ import StatCard from "../../components/ui/StatCard"
 import Modal from "../../components/ui/Modal"
 import FormInput from "../../components/ui/FormInput"
 import ConfirmDialog from "../../components/ui/ConfirmDialog"
+import EmailDialog from "../../components/ui/EmailDialog"
 
 const defaultForm = {
   policyId: "", clientId: "", amount: "", paymentMethod: "TRANSFERENCIA",
@@ -35,6 +36,8 @@ export default function PaymentsPage() {
   const [policies, setPolicies] = useState<Policy[]>([])
   const [clientBalance, setClientBalance] = useState<{ pending: number; completed: number; total: number } | null>(null)
   const [policyBalances, setPolicyBalances] = useState<PolicyBalance[]>([])
+  const [emailDialogOpen, setEmailDialogOpen] = useState(false)
+  const [currentPaymentForEmail, setCurrentPaymentForEmail] = useState<number | null>(null)
 
   useEffect(() => {
     api.get<PaginatedResponse<Policy>>("/policies?limit=500&status=VIGENTE").then(r => setPolicies(r.data)).catch(() => {})
@@ -138,6 +141,41 @@ export default function PaymentsPage() {
     }
     if (crud.modal === "create") await crud.createItem(data)
     else if (crud.modal === "edit" && crud.selected) await crud.updateItem(crud.selected.id, data)
+  }
+
+  const handlePrintPDF = async (id: number) => {
+    try {
+      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3000/api'}/payments/${id}/pdf`, {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem('token')}`,
+        },
+      })
+      if (!response.ok) throw new Error('Error al generar PDF')
+
+      const blob = await response.blob()
+      const url = window.URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      link.download = `recibo-${id}.pdf`
+      link.click()
+      window.URL.revokeObjectURL(url)
+      crud.setSuccess('PDF generado exitosamente')
+    } catch (error) {
+      crud.setError('Error al generar PDF')
+    }
+  }
+
+  const handleOpenEmailDialog = (id: number) => {
+    setCurrentPaymentForEmail(id)
+    setEmailDialogOpen(true)
+  }
+
+  const handleSendEmail = async (recipients: string[], includeAttachment: boolean) => {
+    if (!currentPaymentForEmail) return
+    await api.post(`/payments/${currentPaymentForEmail}/email`, { recipients, includeAttachment })
+    crud.setSuccess('Email enviado exitosamente')
+    setEmailDialogOpen(false)
+    setCurrentPaymentForEmail(null)
   }
 
   const handleCompletePayment = async (payment: Payment) => {
@@ -256,8 +294,25 @@ export default function PaymentsPage() {
               <div><span className="text-slate-400">Fecha Vencimiento:</span> <span className="text-white ml-2">{fmtDate(crud.selected.dueDate)}</span></div>
             </div>
 
-            {crud.selected.status === "PENDIENTE" && (
-              <div className="pt-4 border-t border-slate-700">
+            <div className="pt-4 border-t border-slate-700">
+              <div className="flex gap-2 mb-3">
+                <button
+                  onClick={() => handlePrintPDF(crud.selected!.id)}
+                  className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-sm flex items-center gap-2 transition-colors"
+                >
+                  <Printer className="w-4 h-4" />
+                  Imprimir Recibo
+                </button>
+                <button
+                  onClick={() => handleOpenEmailDialog(crud.selected!.id)}
+                  className="px-4 py-2 rounded-xl bg-teal-600 hover:bg-teal-500 text-white text-sm flex items-center gap-2 transition-colors"
+                >
+                  <Mail className="w-4 h-4" />
+                  Enviar Email
+                </button>
+              </div>
+
+              {crud.selected.status === "PENDIENTE" && (
                 <button
                   onClick={() => handleCompletePayment(crud.selected!)}
                   className="w-full px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-medium transition-colors flex items-center justify-center gap-2"
@@ -265,8 +320,8 @@ export default function PaymentsPage() {
                   <CreditCard size={16} />
                   <span>Realizar Pago</span>
                 </button>
-              </div>
-            )}
+              )}
+            </div>
           </div>
         )}
       </Modal>
@@ -349,6 +404,21 @@ export default function PaymentsPage() {
         onConfirm={crud.deleteItem}
         onCancel={crud.cancelDelete}
         loading={crud.saving}
+      />
+
+      <EmailDialog
+        isOpen={emailDialogOpen}
+        onClose={() => {
+          setEmailDialogOpen(false)
+          setCurrentPaymentForEmail(null)
+        }}
+        onSend={handleSendEmail}
+        recipientOptions={[
+          { value: "client", label: "Cliente", description: "Enviar recibo al email del cliente" },
+          { value: "internal", label: "Interno", description: "Enviar a equipo interno" },
+        ]}
+        title="Enviar Recibo de Pago por Email"
+        attachmentLabel="Adjuntar recibo (PDF)"
       />
     </div>
   )

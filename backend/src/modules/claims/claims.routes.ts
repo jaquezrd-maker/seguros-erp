@@ -3,7 +3,7 @@ import { ClaimsController } from './claims.controller'
 import { authMiddleware } from '../../middleware/auth.middleware'
 import { rbacMiddleware } from '../../middleware/rbac.middleware'
 import { validate } from '../../middleware/validation.middleware'
-import { createClaimSchema, updateClaimSchema, addNoteSchema } from './claims.validation'
+import { createClaimSchema, updateClaimSchema, addNoteSchema, sendEmailSchema } from './claims.validation'
 
 const router = Router()
 const controller = new ClaimsController()
@@ -16,6 +16,21 @@ router.get(
   '/',
   rbacMiddleware(['ADMINISTRADOR', 'EJECUTIVO', 'SOLO_LECTURA']),
   controller.list
+)
+
+// GET /:id/pdf - Generate claim PDF (must be before /:id)
+router.get(
+  '/:id/pdf',
+  rbacMiddleware(['ADMINISTRADOR', 'EJECUTIVO', 'SOLO_LECTURA']),
+  controller.generatePDF
+)
+
+// POST /:id/email - Send claim email (must be before /:id)
+router.post(
+  '/:id/email',
+  rbacMiddleware(['ADMINISTRADOR', 'EJECUTIVO']),
+  validate(sendEmailSchema),
+  controller.sendEmail
 )
 
 // GET /:id - Get claim by ID

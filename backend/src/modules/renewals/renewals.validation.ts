@@ -9,3 +9,10 @@ export const processRenewalSchema = z.object({
     newPremium: z.number().positive('La nueva prima debe ser un valor positivo').optional().nullable(),
   }),
 })
+
+export const sendEmailSchema = z.object({
+  body: z.object({
+    recipients: z.array(z.enum(['client', 'insurer', 'internal', 'all'])).min(1, 'Al menos un destinatario es requerido'),
+    includeAttachment: z.boolean().default(false),
+  }),
+})

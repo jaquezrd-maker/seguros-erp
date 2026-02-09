@@ -1,5 +1,9 @@
 import { Request, Response } from 'express'
 import { PaymentsService } from './payments.service'
+import { generatePaymentReceiptPDF } from '../../services/pdf/payment.pdf'
+import { sendEmail } from '../../config/email'
+import { paymentConfirmationEmail } from '../../utils/emailTemplates'
+import { formatDate } from '../../utils/pdf'
 
 const paymentsService = new PaymentsService()
 
@@ -171,6 +175,94 @@ export class PaymentsController {
       return res.status(500).json({
         success: false,
         message: error.message || 'Error al regenerar pagos',
+      })
+    }
+  }
+
+  async generatePDF(req: Request, res: Response) {
+    try {
+      const id = Number(req.params.id)
+      const pdfBuffer = await generatePaymentReceiptPDF(id)
+
+      res.setHeader('Content-Type', 'application/pdf')
+      res.setHeader('Content-Disposition', `attachment; filename="recibo-${id}.pdf"`)
+      res.send(pdfBuffer)
+    } catch (error: any) {
+      return res.status(500).json({
+        success: false,
+        message: error.message || 'Error al generar PDF',
+      })
+    }
+  }
+
+  async sendEmail(req: Request, res: Response) {
+    try {
+      const id = Number(req.params.id)
+      const { recipients, includeAttachment } = req.body
+
+      // Fetch payment data
+      const payment = await paymentsService.findById(id)
+
+      // Determine email recipients
+      const emailRecipients: string[] = []
+      if (recipients.includes('client') && payment.client?.email) {
+        emailRecipients.push(payment.client.email)
+      }
+      if (recipients.includes('internal')) {
+        const internalEmail = process.env.INTERNAL_EMAIL || 'admin@seguropro.com'
+        emailRecipients.push(internalEmail)
+      }
+
+      if (emailRecipients.length === 0) {
+        return res.status(400).json({
+          success: false,
+          message: 'No se encontraron destinatarios con email válido',
+        })
+      }
+
+      // Generate PDF attachment if requested
+      let attachments = undefined
+      if (includeAttachment) {
+        const pdfBuffer = await generatePaymentReceiptPDF(id)
+        attachments = [
+          {
+            filename: `recibo-${payment.receiptNumber || payment.id}.pdf`,
+            content: pdfBuffer,
+            contentType: 'application/pdf',
+          },
+        ]
+      }
+
+      // Calculate remaining balance if needed
+      const remainingBalance = undefined // TODO: Calculate from policy's pending payments if needed
+
+      // Generate email content
+      const emailTemplate = paymentConfirmationEmail({
+        clientName: payment.client?.name || 'Cliente',
+        policyNumber: payment.policy?.policyNumber || '',
+        amount: Number(payment.amount),
+        paymentDate: formatDate(payment.paymentDate),
+        paymentMethod: payment.paymentMethod || '',
+        receiptNumber: payment.receiptNumber || undefined,
+        remainingBalance,
+      })
+
+      // Send email
+      await sendEmail({
+        to: emailRecipients,
+        subject: emailTemplate.subject,
+        html: emailTemplate.html,
+        attachments,
+      })
+
+      return res.json({
+        success: true,
+        message: `Email enviado a ${emailRecipients.length} destinatario(s)`,
+      })
+    } catch (error: any) {
+      return res.status(500).json({
+        success: false,
+        message: error.message || 'Error al enviar email',
       })
     }
   }

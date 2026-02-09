@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react"
-import { AlertTriangle } from "lucide-react"
+import { AlertTriangle, Printer, Mail } from "lucide-react"
 import useCrudModule from "../../hooks/useCrudModule"
 import { api } from "../../api/client"
 import type { Claim, Policy, PaginatedResponse } from "../../types"
@@ -10,6 +10,7 @@ import SearchBar from "../../components/ui/SearchBar"
 import StatCard from "../../components/ui/StatCard"
 import Modal from "../../components/ui/Modal"
 import FormInput from "../../components/ui/FormInput"
+import EmailDialog from "../../components/ui/EmailDialog"
 
 const defaultForm = {
   policyId: "", type: "", dateOccurred: "", description: "", estimatedAmount: "", priority: "MEDIA"
@@ -18,6 +19,40 @@ const defaultForm = {
 export default function ClaimsPage() {
   const crud = useCrudModule<Claim>({ endpoint: "/claims", defaultForm })
   const [policies, setPolicies] = useState<Policy[]>([])
+  const [emailDialogOpen, setEmailDialogOpen] = useState(false)
+  const [currentClaimForEmail, setCurrentClaimForEmail] = useState<number | null>(null)
+
+  const handlePrintPDF = async (id: number) => {
+    try {
+      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3000/api'}/claims/${id}/pdf`, {
+        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
+      })
+      if (!response.ok) throw new Error('Error al generar PDF')
+      const blob = await response.blob()
+      const url = window.URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      link.download = `siniestro-${id}.pdf`
+      link.click()
+      window.URL.revokeObjectURL(url)
+      crud.setSuccess('PDF generado exitosamente')
+    } catch (error) {
+      crud.setError('Error al generar PDF')
+    }
+  }
+
+  const handleOpenEmailDialog = (id: number) => {
+    setCurrentClaimForEmail(id)
+    setEmailDialogOpen(true)
+  }
+
+  const handleSendEmail = async (recipients: string[], includeAttachment: boolean) => {
+    if (!currentClaimForEmail) return
+    await api.post(`/claims/${currentClaimForEmail}/email`, { recipients, includeAttachment })
+    crud.setSuccess('Email enviado exitosamente')
+    setEmailDialogOpen(false)
+    setCurrentClaimForEmail(null)
+  }
 
   useEffect(() => {
     api.get<PaginatedResponse<Policy>>("/policies?limit=500&status=VIGENTE").then(r => setPolicies(r.data)).catch(() => {})
@@ -86,14 +121,34 @@ export default function ClaimsPage() {
               {crud.selected.approvedAmount && <div><span className="text-slate-400">Monto Aprobado:</span> <span className="text-white ml-2">{fmt(crud.selected.approvedAmount)}</span></div>}
             </div>
             {crud.selected.description && <div><span className="text-slate-400">Descripción:</span> <p className="text-white mt-1">{crud.selected.description}</p></div>}
-            {crud.selected.status === "PENDIENTE" && (
-              <div className="flex gap-2 pt-4 border-t border-slate-700">
-                <button onClick={() => crud.patchItem(crud.selected!.id, "status", { status: "EN_PROCESO" })}
-                  className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-sm transition-colors">Iniciar Proceso</button>
-                <button onClick={() => crud.patchItem(crud.selected!.id, "status", { status: "RECHAZADO" })}
-                  className="px-4 py-2 rounded-xl bg-red-600 hover:bg-red-500 text-white text-sm transition-colors">Rechazar</button>
+
+            <div className="pt-4 border-t border-slate-700">
+              <div className="flex gap-2 mb-3">
+                <button
+                  onClick={() => handlePrintPDF(crud.selected!.id)}
+                  className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-sm flex items-center gap-2 transition-colors"
+                >
+                  <Printer className="w-4 h-4" />
+                  Imprimir Reporte
+                </button>
+                <button
+                  onClick={() => handleOpenEmailDialog(crud.selected!.id)}
+                  className="px-4 py-2 rounded-xl bg-teal-600 hover:bg-teal-500 text-white text-sm flex items-center gap-2 transition-colors"
+                >
+                  <Mail className="w-4 h-4" />
+                  Enviar Email
+                </button>
               </div>
-            )}
+
+              {crud.selected.status === "PENDIENTE" && (
+                <div className="flex gap-2">
+                  <button onClick={() => crud.patchItem(crud.selected!.id, "status", { status: "EN_PROCESO" })}
+                    className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-sm transition-colors">Iniciar Proceso</button>
+                  <button onClick={() => crud.patchItem(crud.selected!.id, "status", { status: "RECHAZADO" })}
+                    className="px-4 py-2 rounded-xl bg-red-600 hover:bg-red-500 text-white text-sm transition-colors">Rechazar</button>
+                </div>
+              )}
+            </div>
           </div>
         )}
       </Modal>
@@ -173,6 +228,22 @@ export default function ClaimsPage() {
           </div>
         )}
       </Modal>
+
+      <EmailDialog
+        isOpen={emailDialogOpen}
+        onClose={() => {
+          setEmailDialogOpen(false)
+          setCurrentClaimForEmail(null)
+        }}
+        onSend={handleSendEmail}
+        recipientOptions={[
+          { value: "client", label: "Cliente", description: "Enviar reporte al cliente" },
+          { value: "insurer", label: "Aseguradora", description: "Enviar a la aseguradora" },
+          { value: "internal", label: "Interno", description: "Enviar a equipo interno" },
+        ]}
+        title="Enviar Reporte de Siniestro por Email"
+        attachmentLabel="Adjuntar reporte (PDF)"
+      />
     </div>
   )
 }

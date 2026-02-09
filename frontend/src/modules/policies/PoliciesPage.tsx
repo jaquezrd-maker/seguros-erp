@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react"
-import { Shield, CheckCircle, Clock } from "lucide-react"
+import { Shield, CheckCircle, Clock, Printer, Mail } from "lucide-react"
 import useCrudModule from "../../hooks/useCrudModule"
 import { api } from "../../api/client"
 import type { Policy, Client, Insurer, InsuranceType, ApiResponse, PaginatedResponse, BeneficiaryData } from "../../types"
@@ -11,6 +11,7 @@ import StatCard from "../../components/ui/StatCard"
 import Modal from "../../components/ui/Modal"
 import FormInput from "../../components/ui/FormInput"
 import ConfirmDialog from "../../components/ui/ConfirmDialog"
+import EmailDialog from "../../components/ui/EmailDialog"
 import PaymentPlanConfig from "./PaymentPlanConfig"
 import BeneficiaryForm from "./BeneficiaryForm"
 
@@ -48,6 +49,8 @@ export default function PoliciesPage() {
   const [loadingPayments, setLoadingPayments] = useState(false)
   const [permanentDeleteTarget, setPermanentDeleteTarget] = useState<Policy | null>(null)
   const [beneficiaryData, setBeneficiaryData] = useState<BeneficiaryData | null>(null)
+  const [emailDialogOpen, setEmailDialogOpen] = useState(false)
+  const [currentPolicyForEmail, setCurrentPolicyForEmail] = useState<number | null>(null)
 
   useEffect(() => {
     api.get<PaginatedResponse<Client>>("/clients?limit=500").then(r => setClients(r.data)).catch((err) => {
@@ -169,6 +172,41 @@ export default function PoliciesPage() {
       console.error("Error al cancelar póliza:", error)
       crud.setError("Error al cancelar la póliza")
     }
+  }
+
+  const handlePrintPDF = async (id: number) => {
+    try {
+      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3000/api'}/policies/${id}/pdf`, {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem('token')}`,
+        },
+      })
+      if (!response.ok) throw new Error('Error al generar PDF')
+
+      const blob = await response.blob()
+      const url = window.URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      link.download = `poliza-${id}.pdf`
+      link.click()
+      window.URL.revokeObjectURL(url)
+      crud.setSuccess('PDF generado exitosamente')
+    } catch (error) {
+      crud.setError('Error al generar PDF')
+    }
+  }
+
+  const handleOpenEmailDialog = (id: number) => {
+    setCurrentPolicyForEmail(id)
+    setEmailDialogOpen(true)
+  }
+
+  const handleSendEmail = async (recipients: string[], includeAttachment: boolean) => {
+    if (!currentPolicyForEmail) return
+    await api.post(`/policies/${currentPolicyForEmail}/email`, { recipients, includeAttachment })
+    crud.setSuccess('Email enviado exitosamente')
+    setEmailDialogOpen(false)
+    setCurrentPolicyForEmail(null)
   }
 
   const handleViewPolicy = async (policy: Policy) => {
@@ -385,13 +423,30 @@ export default function PoliciesPage() {
               )}
             </div>
 
-            {crud.selected.status === "VIGENTE" && (
-              <div className="pt-4 border-t border-slate-700">
+            <div className="pt-4 border-t border-slate-700">
+              <div className="flex gap-2 mb-3">
+                <button
+                  onClick={() => handlePrintPDF(crud.selected!.id)}
+                  className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-sm flex items-center gap-2 transition-colors"
+                >
+                  <Printer className="w-4 h-4" />
+                  Imprimir PDF
+                </button>
+                <button
+                  onClick={() => handleOpenEmailDialog(crud.selected!.id)}
+                  className="px-4 py-2 rounded-xl bg-teal-600 hover:bg-teal-500 text-white text-sm flex items-center gap-2 transition-colors"
+                >
+                  <Mail className="w-4 h-4" />
+                  Enviar Email
+                </button>
+              </div>
+
+              {crud.selected.status === "VIGENTE" && (
                 <button onClick={() => handleCancel(crud.selected!)} className="px-4 py-2 rounded-xl bg-red-600 hover:bg-red-500 text-white text-sm transition-colors">
                   Cancelar Póliza
                 </button>
-              </div>
-            )}
+              )}
+            </div>
 
             {crud.selected.status === "CANCELADA" && (
               <div className="pt-4 border-t border-slate-700">
@@ -504,6 +559,22 @@ export default function PoliciesPage() {
         onConfirm={confirmPermanentDelete}
         onCancel={cancelPermanentDelete}
         loading={crud.saving}
+      />
+
+      <EmailDialog
+        isOpen={emailDialogOpen}
+        onClose={() => {
+          setEmailDialogOpen(false)
+          setCurrentPolicyForEmail(null)
+        }}
+        onSend={handleSendEmail}
+        recipientOptions={[
+          { value: "client", label: "Cliente", description: "Enviar al email del cliente" },
+          { value: "insurer", label: "Aseguradora", description: "Enviar a la aseguradora" },
+          { value: "internal", label: "Interno", description: "Enviar a equipo interno" },
+        ]}
+        title="Enviar Póliza por Email"
+        attachmentLabel="Adjuntar documento de póliza (PDF)"
       />
     </div>
   )

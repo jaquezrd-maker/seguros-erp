@@ -140,7 +140,7 @@ export const policiesService = {
       where: { id },
       include: {
         client: { select: { id: true, name: true, cedulaRnc: true, phone: true, email: true } },
-        insurer: { select: { id: true, name: true, rnc: true } },
+        insurer: { select: { id: true, name: true, rnc: true, email: true } },
         insuranceType: { select: { id: true, name: true, category: true } },
         endorsements: { orderBy: { effectiveDate: 'desc' } },
         claims: { orderBy: { createdAt: 'desc' } },

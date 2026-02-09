@@ -1,6 +1,9 @@
 import { Request, Response } from 'express'
 import { ClaimsService } from './claims.service'
 import { ClaimStatus, ClaimPriority } from '@prisma/client'
+import { generateClaimReportPDF } from '../../services/pdf/claim.pdf'
+import { sendEmail } from '../../config/email'
+import { claimUpdateEmail } from '../../utils/emailTemplates'
 
 const claimsService = new ClaimsService()
 
@@ -153,6 +156,100 @@ export class ClaimsController {
     } catch (error) {
       console.error('Error adding claim note:', error)
       return res.status(500).json({ success: false, message: 'Error al agregar nota al siniestro' })
+    }
+  }
+
+  async generatePDF(req: Request, res: Response) {
+    try {
+      const id = Number(req.params.id)
+      const pdfBuffer = await generateClaimReportPDF(id)
+
+      res.setHeader('Content-Type', 'application/pdf')
+      res.setHeader('Content-Disposition', `attachment; filename="siniestro-${id}.pdf"`)
+      res.send(pdfBuffer)
+    } catch (error: any) {
+      return res.status(500).json({
+        success: false,
+        message: error.message || 'Error al generar PDF',
+      })
+    }
+  }
+
+  async sendEmail(req: Request, res: Response) {
+    try {
+      const id = Number(req.params.id)
+      const { recipients, includeAttachment } = req.body
+
+      // Fetch claim data
+      const claim = await claimsService.findById(id)
+
+      if (!claim) {
+        return res.status(404).json({
+          success: false,
+          message: 'Siniestro no encontrado',
+        })
+      }
+
+      // Determine email recipients
+      const emailRecipients: string[] = []
+      if (recipients.includes('client') && claim.policy?.client?.email) {
+        emailRecipients.push(claim.policy.client.email)
+      }
+      if (recipients.includes('insurer') && claim.policy?.insurer?.email) {
+        emailRecipients.push(claim.policy.insurer.email)
+      }
+      if (recipients.includes('internal')) {
+        const internalEmail = process.env.INTERNAL_EMAIL || 'admin@seguropro.com'
+        emailRecipients.push(internalEmail)
+      }
+
+      if (emailRecipients.length === 0) {
+        return res.status(400).json({
+          success: false,
+          message: 'No se encontraron destinatarios con email válido',
+        })
+      }
+
+      // Generate PDF attachment if requested
+      let attachments = undefined
+      if (includeAttachment) {
+        const pdfBuffer = await generateClaimReportPDF(id)
+        attachments = [
+          {
+            filename: `siniestro-${claim.claimNumber}.pdf`,
+            content: pdfBuffer,
+            contentType: 'application/pdf',
+          },
+        ]
+      }
+
+      // Generate email content
+      const emailTemplate = claimUpdateEmail({
+        clientName: claim.policy?.client?.name || 'Cliente',
+        claimNumber: claim.claimNumber,
+        policyNumber: claim.policy?.policyNumber || '',
+        status: claim.status,
+        estimatedAmount: claim.estimatedAmount ? Number(claim.estimatedAmount) : undefined,
+        approvedAmount: claim.approvedAmount ? Number(claim.approvedAmount) : undefined,
+      })
+
+      // Send email
+      await sendEmail({
+        to: emailRecipients,
+        subject: emailTemplate.subject,
+        html: emailTemplate.html,
+        attachments,
+      })
+
+      return res.json({
+        success: true,
+        message: `Email enviado a ${emailRecipients.length} destinatario(s)`,
+      })
+    } catch (error: any) {
+      return res.status(500).json({
+        success: false,
+        message: error.message || 'Error al enviar email',
+      })
     }
   }
 }

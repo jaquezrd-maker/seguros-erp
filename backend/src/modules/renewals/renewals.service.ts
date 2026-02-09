@@ -78,7 +78,10 @@ export class RenewalsService {
               select: { id: true, name: true, cedulaRnc: true, email: true, phone: true },
             },
             insurer: {
-              select: { id: true, name: true },
+              select: { id: true, name: true, email: true },
+            },
+            insuranceType: {
+              select: { id: true, name: true, category: true },
             },
           },
         },

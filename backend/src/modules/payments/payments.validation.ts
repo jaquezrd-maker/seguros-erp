@@ -34,3 +34,10 @@ export const createPaymentSchema = z.object({
 export const updatePaymentSchema = z.object({
   body: paymentBodySchema.partial(),
 })
+
+export const sendEmailSchema = z.object({
+  body: z.object({
+    recipients: z.array(z.enum(['client', 'internal', 'all'])).min(1, 'Al menos un destinatario es requerido'),
+    includeAttachment: z.boolean().default(false),
+  }),
+})
