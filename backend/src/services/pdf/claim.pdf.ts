@@ -1,6 +1,7 @@
 import prisma from '../../config/database'
 import {
   createDocument,
+  addPage,
   addCompanyHeader,
   addFooter,
   addField,
@@ -9,8 +10,11 @@ import {
   formatCurrency,
   formatDate,
   documentToBuffer,
-  addPageNumbers,
+  drawText,
+  drawBoldText,
+  COLORS,
 } from '../../utils/pdf'
+import { rgb } from 'pdf-lib'
 
 export async function generateClaimReportPDF(claimId: number): Promise<Buffer> {
   // Fetch claim data with all related information
@@ -64,89 +68,101 @@ export async function generateClaimReportPDF(claimId: number): Promise<Buffer> {
   }
 
   // Create PDF document
-  const doc = createDocument()
+  const doc = await createDocument()
+  const page = await addPage(doc)
+  const { width, height } = page.getSize()
+  const margin = 50
 
   // Add company header
-  addCompanyHeader(doc, 'Reporte de Siniestro')
+  let currentY = await addCompanyHeader(doc, page, 'Reporte de Siniestro')
 
   // Claim Number (prominent)
-  doc.moveDown(0.5)
-  doc
-    .fontSize(14)
-    .font('Helvetica-Bold')
-    .fillColor('#0d9488')
-    .text(`Siniestro No. ${claim.claimNumber}`, { align: 'center' })
-  doc.moveDown(1)
+  currentY -= 10
+  currentY = await drawBoldText(page, `Siniestro No. ${claim.claimNumber}`, {
+    x: width / 2 - 80,
+    y: currentY,
+    size: 14,
+    color: COLORS.primary,
+  })
+  currentY -= 25
 
   // Claim Information Section
-  addSectionHeader(doc, 'Información del Siniestro')
+  currentY = await addSectionHeader(page, 'Información del Siniestro', currentY)
 
-  addField(doc, 'Número de Siniestro', claim.claimNumber)
-  addField(doc, 'Tipo', claim.type || '—')
-  addField(doc, 'Estado', claim.status, { bold: true })
-  addField(doc, 'Prioridad', claim.priority)
-  addField(doc, 'Fecha del Incidente', formatDate(claim.dateOccurred))
-  addField(doc, 'Fecha Reportado', formatDate(claim.dateReported))
+  currentY = await addField(page, 'Número de Siniestro', claim.claimNumber, currentY)
+  currentY = await addField(page, 'Tipo', claim.type || '—', currentY)
+  currentY = await addField(page, 'Estado', claim.status, currentY, { bold: true })
+  currentY = await addField(page, 'Prioridad', claim.priority, currentY)
+  currentY = await addField(page, 'Fecha del Incidente', formatDate(claim.dateOccurred), currentY)
+  currentY = await addField(page, 'Fecha Reportado', formatDate(claim.dateReported), currentY)
 
   if (claim.estimatedAmount) {
-    addField(
-      doc,
+    currentY = await addField(
+      page,
       'Monto Estimado',
       formatCurrency(Number(claim.estimatedAmount)),
+      currentY,
       { bold: true }
     )
   }
 
   if (claim.approvedAmount) {
-    addField(
-      doc,
+    currentY = await addField(
+      page,
       'Monto Aprobado',
       formatCurrency(Number(claim.approvedAmount)),
+      currentY,
       { bold: true }
     )
   }
 
   // Description Section
   if (claim.description) {
-    addSectionHeader(doc, 'Descripción del Incidente')
-    doc
-      .fontSize(10)
-      .font('Helvetica')
-      .fillColor('#1e293b')
-      .text(claim.description, { align: 'left' })
-    doc.moveDown()
+    currentY -= 10 // Extra spacing
+    currentY = await addSectionHeader(page, 'Descripción del Incidente', currentY)
+    currentY = await drawText(page, claim.description, {
+      x: margin,
+      y: currentY,
+      size: 10,
+      color: COLORS.text,
+      maxWidth: width - margin * 2,
+    })
+    currentY -= 15
   }
 
   // Policy Information Section
-  addSectionHeader(doc, 'Información de la Póliza')
+  currentY -= 10 // Extra spacing
+  currentY = await addSectionHeader(page, 'Información de la Póliza', currentY)
 
-  addField(doc, 'Número de Póliza', claim.policy?.policyNumber || '—')
-  addField(doc, 'Aseguradora', claim.policy?.insurer?.name || '—')
-  addField(doc, 'Tipo de Seguro', claim.policy?.insuranceType?.name || '—')
+  currentY = await addField(page, 'Número de Póliza', claim.policy?.policyNumber || '—', currentY)
+  currentY = await addField(page, 'Aseguradora', claim.policy?.insurer?.name || '—', currentY)
+  currentY = await addField(page, 'Tipo de Seguro', claim.policy?.insuranceType?.name || '—', currentY)
   if (claim.policy?.insuranceType?.category) {
-    addField(doc, 'Categoría', claim.policy.insuranceType.category)
+    currentY = await addField(page, 'Categoría', claim.policy.insuranceType.category, currentY)
   }
 
   // Client Information Section
-  addSectionHeader(doc, 'Información del Asegurado')
+  currentY -= 10 // Extra spacing
+  currentY = await addSectionHeader(page, 'Información del Asegurado', currentY)
 
-  addField(doc, 'Nombre', claim.policy?.client?.name || '—')
-  addField(doc, 'Cédula/RNC', claim.policy?.client?.cedulaRnc || '—')
+  currentY = await addField(page, 'Nombre', claim.policy?.client?.name || '—', currentY)
+  currentY = await addField(page, 'Cédula/RNC', claim.policy?.client?.cedulaRnc || '—', currentY)
   if (claim.policy?.client?.phone) {
-    addField(doc, 'Teléfono', claim.policy.client.phone)
+    currentY = await addField(page, 'Teléfono', claim.policy.client.phone, currentY)
   }
   if (claim.policy?.client?.email) {
-    addField(doc, 'Correo Electrónico', claim.policy.client.email)
+    currentY = await addField(page, 'Correo Electrónico', claim.policy.client.email, currentY)
   }
 
   // Notes/Activity History Section
   if (claim.notes && claim.notes.length > 0) {
-    addSectionHeader(doc, 'Historial de Actividad')
+    currentY -= 15 // Extra spacing
+    currentY = await addSectionHeader(page, 'Historial de Actividad', currentY)
 
     const noteColumns = [
-      { header: 'Fecha', key: 'date', width: 90, align: 'left' as const },
-      { header: 'Usuario', key: 'user', width: 120, align: 'left' as const },
-      { header: 'Nota', key: 'note', width: 210, align: 'left' as const },
+      { header: 'Fecha', key: 'date', width: 100 },
+      { header: 'Usuario', key: 'user', width: 120 },
+      { header: 'Nota', key: 'note', width: 240 },
     ]
 
     const noteRows = claim.notes.map((noteItem) => ({
@@ -155,83 +171,100 @@ export async function generateClaimReportPDF(claimId: number): Promise<Buffer> {
       note: noteItem.note,
     }))
 
-    buildTable(doc, noteColumns, noteRows)
+    currentY = await buildTable(page, noteColumns, noteRows, currentY)
   }
 
   // Status Summary Box
-  doc.moveDown(1)
-  const pageWidth = doc.page.width
-  const leftMargin = 50
-  const rightMargin = 50
-  const boxWidth = pageWidth - leftMargin - rightMargin
+  currentY -= 20
+  const boxWidth = width - margin * 2
   const boxHeight = 80
 
-  const statusColorMap: Record<string, string> = {
-    PENDIENTE: '#f59e0b',
-    EN_PROCESO: '#3b82f6',
-    EN_REVISION: '#8b5cf6',
-    APROBADO: '#10b981',
-    RECHAZADO: '#ef4444',
-    PAGADO: '#059669',
+  const statusColorMap: Record<string, ReturnType<typeof rgb>> = {
+    PENDIENTE: rgb(0.96, 0.62, 0.04), // Orange
+    EN_PROCESO: rgb(0.23, 0.51, 0.96), // Blue
+    EN_REVISION: rgb(0.54, 0.36, 0.96), // Purple
+    APROBADO: rgb(0.06, 0.71, 0.41), // Green
+    RECHAZADO: rgb(0.94, 0.27, 0.27), // Red
+    PAGADO: rgb(0.02, 0.54, 0.41), // Dark green
   }
 
-  const statusColor = statusColorMap[claim.status] || '#64748b'
+  const statusColor = statusColorMap[claim.status] || COLORS.textLight
 
   // Draw summary box
-  doc.rect(leftMargin, doc.y, boxWidth, boxHeight).fillAndStroke('#f1f5f9', '#cbd5e1')
+  page.drawRectangle({
+    x: margin,
+    y: currentY - boxHeight,
+    width: boxWidth,
+    height: boxHeight,
+    color: COLORS.background,
+    borderColor: COLORS.border,
+    borderWidth: 1,
+  })
 
-  const boxY = doc.y + 15
-  doc
-    .fontSize(11)
-    .font('Helvetica-Bold')
-    .fillColor('#64748b')
-    .text('Estado Actual:', leftMargin + 20, boxY)
+  currentY -= 20
+  await drawBoldText(page, 'Estado Actual:', {
+    x: margin + 20,
+    y: currentY,
+    size: 11,
+    color: COLORS.textLight,
+  })
 
-  doc
-    .fontSize(14)
-    .fillColor(statusColor)
-    .text(claim.status, leftMargin + 20, boxY + 20)
+  currentY -= 20
+  await drawBoldText(page, claim.status, {
+    x: margin + 20,
+    y: currentY,
+    size: 14,
+    color: statusColor,
+  })
 
   if (claim.approvedAmount) {
-    doc
-      .fontSize(11)
-      .fillColor('#64748b')
-      .text('Monto:', leftMargin + 20, boxY + 45, { continued: true })
-      .fontSize(12)
-      .fillColor('#0d9488')
-      .text(`  ${formatCurrency(Number(claim.approvedAmount))}`)
+    currentY -= 20
+    await drawText(page, 'Monto:', {
+      x: margin + 20,
+      y: currentY,
+      size: 11,
+      color: COLORS.textLight,
+    })
+    await drawBoldText(page, formatCurrency(Number(claim.approvedAmount)), {
+      x: margin + 85,
+      y: currentY,
+      size: 12,
+      color: COLORS.primary,
+    })
   }
 
-  doc.y += boxHeight + 10
+  currentY -= boxHeight + 10
 
   // Contact Information
-  doc.moveDown(1)
-  doc
-    .fontSize(9)
-    .font('Helvetica')
-    .fillColor('#64748b')
-    .text(
-      'Para consultas sobre este siniestro, contacte con su ejecutivo de seguros o directamente con la aseguradora.',
-      { align: 'center' }
-    )
+  currentY -= 20
+  currentY = await drawText(page, 'Para consultas sobre este siniestro, contacte con su ejecutivo de seguros o directamente con la aseguradora.', {
+    x: margin,
+    y: currentY,
+    size: 9,
+    color: COLORS.textLight,
+    maxWidth: width - margin * 2,
+  })
 
   // Footer disclaimer
-  doc.moveDown(1)
-  doc
-    .fontSize(9)
-    .fillColor('#64748b')
-    .text(
-      'Este documento es un reporte oficial del siniestro emitido por SeguroPro.',
-      { align: 'center' }
-    )
+  currentY -= 20
+  currentY = await drawText(page, 'Este documento es un reporte oficial del siniestro emitido por SeguroPro.', {
+    x: margin,
+    y: currentY,
+    size: 9,
+    color: COLORS.textLight,
+    maxWidth: width - margin * 2,
+  })
 
-  doc
-    .fontSize(8)
-    .text(`Emitido el: ${formatDate(new Date())}`, { align: 'center' })
+  currentY = await drawText(page, `Emitido el: ${formatDate(new Date())}`, {
+    x: width / 2 - 50,
+    y: currentY - 10,
+    size: 8,
+    color: COLORS.textLight,
+  })
 
-  // Add page numbers to all pages
-  addPageNumbers(doc)
+  // Add footer
+  await addFooter(doc, page, 1)
 
   // Convert to buffer
-  return documentToBuffer(doc)
+  return await documentToBuffer(doc)
 }

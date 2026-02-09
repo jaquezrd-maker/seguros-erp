@@ -1,6 +1,7 @@
 import prisma from '../../config/database'
 import {
   createDocument,
+  addPage,
   addCompanyHeader,
   addFooter,
   addField,
@@ -8,8 +9,11 @@ import {
   formatCurrency,
   formatDate,
   documentToBuffer,
-  addPageNumbers,
+  drawText,
+  drawBoldText,
+  COLORS,
 } from '../../utils/pdf'
+import { rgb } from 'pdf-lib'
 
 export async function generateRenewalNoticePDF(renewalId: number): Promise<Buffer> {
   // Fetch renewal data with all related information
@@ -39,6 +43,7 @@ export async function generateRenewalNoticePDF(renewalId: number): Promise<Buffe
               id: true,
               name: true,
               rnc: true,
+              email: true,
             },
           },
           insuranceType: {
@@ -61,19 +66,22 @@ export async function generateRenewalNoticePDF(renewalId: number): Promise<Buffe
   }
 
   // Create PDF document
-  const doc = createDocument()
+  const doc = await createDocument()
+  const page = await addPage(doc)
+  const { width, height } = page.getSize()
+  const margin = 50
 
   // Add company header
-  addCompanyHeader(doc, 'Aviso de Renovación de Póliza')
+  let currentY = await addCompanyHeader(doc, page, 'Aviso de Renovación de Póliza')
 
   // Status indicator
-  doc.moveDown(0.5)
+  currentY -= 10
 
-  const statusColorMap: Record<string, string> = {
-    PENDIENTE: '#f59e0b',
-    PROCESADA: '#10b981',
-    RECHAZADA: '#ef4444',
-    VENCIDA: '#64748b',
+  const statusColorMap: Record<string, ReturnType<typeof rgb>> = {
+    PENDIENTE: rgb(0.96, 0.62, 0.04), // Orange
+    PROCESADA: rgb(0.06, 0.71, 0.41), // Green
+    RECHAZADA: rgb(0.94, 0.27, 0.27), // Red
+    VENCIDA: rgb(0.39, 0.45, 0.55), // Slate
   }
 
   const statusTextMap: Record<string, string> = {
@@ -83,39 +91,41 @@ export async function generateRenewalNoticePDF(renewalId: number): Promise<Buffe
     VENCIDA: '⚠️ Renovación Vencida',
   }
 
-  const statusColor = statusColorMap[renewal.status] || '#64748b'
+  const statusColor = statusColorMap[renewal.status] || COLORS.textLight
   const statusText = statusTextMap[renewal.status] || renewal.status
 
-  doc
-    .fontSize(14)
-    .font('Helvetica-Bold')
-    .fillColor(statusColor)
-    .text(statusText, { align: 'center' })
-  doc.moveDown(1)
+  currentY = await drawBoldText(page, statusText, {
+    x: width / 2 - 100,
+    y: currentY,
+    size: 14,
+    color: statusColor,
+  })
+  currentY -= 25
 
   // Policy Information Section
-  addSectionHeader(doc, 'Información de la Póliza')
+  currentY = await addSectionHeader(page, 'Información de la Póliza', currentY)
 
-  addField(doc, 'Número de Póliza', renewal.policy?.policyNumber || '—')
-  addField(doc, 'Aseguradora', renewal.policy?.insurer?.name || '—')
-  addField(doc, 'Tipo de Seguro', renewal.policy?.insuranceType?.name || '—')
+  currentY = await addField(page, 'Número de Póliza', renewal.policy?.policyNumber || '—', currentY)
+  currentY = await addField(page, 'Aseguradora', renewal.policy?.insurer?.name || '—', currentY)
+  currentY = await addField(page, 'Tipo de Seguro', renewal.policy?.insuranceType?.name || '—', currentY)
   if (renewal.policy?.insuranceType?.category) {
-    addField(doc, 'Categoría', renewal.policy.insuranceType.category)
+    currentY = await addField(page, 'Categoría', renewal.policy.insuranceType.category, currentY)
   }
 
   // Renewal Information Section
-  addSectionHeader(doc, 'Detalles de la Renovación')
+  currentY -= 10 // Extra spacing
+  currentY = await addSectionHeader(page, 'Detalles de la Renovación', currentY)
 
-  addField(doc, 'Fecha de Vencimiento Original', formatDate(renewal.originalEndDate))
+  currentY = await addField(page, 'Fecha de Vencimiento Original', formatDate(renewal.originalEndDate), currentY)
 
   if (renewal.newEndDate) {
-    addField(doc, 'Nueva Fecha de Vencimiento', formatDate(renewal.newEndDate), { bold: true })
+    currentY = await addField(page, 'Nueva Fecha de Vencimiento', formatDate(renewal.newEndDate), currentY, { bold: true })
   }
 
-  addField(doc, 'Prima Anterior', formatCurrency(Number(renewal.policy?.premium || 0)))
+  currentY = await addField(page, 'Prima Anterior', formatCurrency(Number(renewal.policy?.premium || 0)), currentY)
 
   if (renewal.newPremium) {
-    addField(doc, 'Nueva Prima', formatCurrency(Number(renewal.newPremium)), { bold: true })
+    currentY = await addField(page, 'Nueva Prima', formatCurrency(Number(renewal.newPremium)), currentY, { bold: true })
 
     // Calculate and show difference
     const difference = Number(renewal.newPremium) - Number(renewal.policy?.premium || 0)
@@ -126,159 +136,179 @@ export async function generateRenewalNoticePDF(renewalId: number): Promise<Buffe
         ? `${formatCurrency(difference)} (disminución)`
         : 'Sin cambios'
 
-    addField(doc, 'Diferencia', differenceText)
+    currentY = await addField(page, 'Diferencia', differenceText, currentY)
   }
 
-  addField(doc, 'Estado', renewal.status)
+  currentY = await addField(page, 'Estado', renewal.status, currentY)
 
   if (renewal.processedBy && renewal.processor) {
-    addField(doc, 'Procesado por', renewal.processor.name)
+    currentY = await addField(page, 'Procesado por', renewal.processor.name, currentY)
   }
 
   // Client Information Section
-  addSectionHeader(doc, 'Información del Asegurado')
+  currentY -= 10 // Extra spacing
+  currentY = await addSectionHeader(page, 'Información del Asegurado', currentY)
 
-  addField(doc, 'Nombre', renewal.policy?.client?.name || '—')
-  addField(doc, 'Cédula/RNC', renewal.policy?.client?.cedulaRnc || '—')
+  currentY = await addField(page, 'Nombre', renewal.policy?.client?.name || '—', currentY)
+  currentY = await addField(page, 'Cédula/RNC', renewal.policy?.client?.cedulaRnc || '—', currentY)
   if (renewal.policy?.client?.phone) {
-    addField(doc, 'Teléfono', renewal.policy.client.phone)
+    currentY = await addField(page, 'Teléfono', renewal.policy.client.phone, currentY)
   }
   if (renewal.policy?.client?.email) {
-    addField(doc, 'Correo Electrónico', renewal.policy.client.email)
+    currentY = await addField(page, 'Correo Electrónico', renewal.policy.client.email, currentY)
   }
 
   // Renewal Summary Box
-  doc.moveDown(1)
-  const pageWidth = doc.page.width
-  const leftMargin = 50
-  const rightMargin = 50
-  const boxWidth = pageWidth - leftMargin - rightMargin
+  currentY -= 20
+  const boxWidth = width - margin * 2
   const boxHeight = renewal.status === 'PROCESADA' ? 100 : 80
 
   // Draw summary box
-  const boxColor = renewal.status === 'PROCESADA' ? '#d1fae5' : '#f1f5f9'
-  const borderColor = renewal.status === 'PROCESADA' ? '#10b981' : '#cbd5e1'
-  doc.rect(leftMargin, doc.y, boxWidth, boxHeight).fillAndStroke(boxColor, borderColor)
+  const boxColor = renewal.status === 'PROCESADA' ? rgb(0.82, 0.98, 0.90) : COLORS.background
+  const borderColor = renewal.status === 'PROCESADA' ? COLORS.success : COLORS.border
 
-  const boxY = doc.y + 15
+  page.drawRectangle({
+    x: margin,
+    y: currentY - boxHeight,
+    width: boxWidth,
+    height: boxHeight,
+    color: boxColor,
+    borderColor: borderColor,
+    borderWidth: 1,
+  })
+
+  currentY -= 20
 
   if (renewal.status === 'PROCESADA') {
-    doc
-      .fontSize(12)
-      .font('Helvetica-Bold')
-      .fillColor('#059669')
-      .text('✅ Renovación Completada', leftMargin + 20, boxY)
+    await drawBoldText(page, '✅ Renovación Completada', {
+      x: margin + 20,
+      y: currentY,
+      size: 12,
+      color: rgb(0.02, 0.40, 0.29), // Dark green
+    })
 
-    doc
-      .fontSize(10)
-      .font('Helvetica')
-      .fillColor('#064e3b')
-      .text('Su póliza ha sido renovada exitosamente.', leftMargin + 20, boxY + 25)
+    currentY -= 20
+    await drawText(page, 'Su póliza ha sido renovada exitosamente.', {
+      x: margin + 20,
+      y: currentY,
+      size: 10,
+      color: rgb(0.02, 0.31, 0.23),
+    })
 
     if (renewal.newEndDate) {
-      doc
-        .fontSize(9)
-        .fillColor('#065f46')
-        .text(
-          `Nueva vigencia hasta: ${formatDate(renewal.newEndDate)}`,
-          leftMargin + 20,
-          boxY + 45
-        )
+      currentY -= 20
+      await drawText(page, `Nueva vigencia hasta: ${formatDate(renewal.newEndDate)}`, {
+        x: margin + 20,
+        y: currentY,
+        size: 9,
+        color: rgb(0.02, 0.37, 0.27),
+      })
     }
 
     if (renewal.newPremium) {
-      doc
-        .fontSize(9)
-        .text(`Nueva prima: ${formatCurrency(Number(renewal.newPremium))}`, leftMargin + 20, boxY + 60)
+      currentY -= 15
+      await drawText(page, `Nueva prima: ${formatCurrency(Number(renewal.newPremium))}`, {
+        x: margin + 20,
+        y: currentY,
+        size: 9,
+        color: rgb(0.02, 0.37, 0.27),
+      })
     }
   } else if (renewal.status === 'PENDIENTE') {
-    doc
-      .fontSize(11)
-      .font('Helvetica-Bold')
-      .fillColor('#f59e0b')
-      .text('⏳ Renovación en Proceso', leftMargin + 20, boxY)
+    await drawBoldText(page, '⏳ Renovación en Proceso', {
+      x: margin + 20,
+      y: currentY,
+      size: 11,
+      color: rgb(0.96, 0.62, 0.04),
+    })
 
-    doc
-      .fontSize(10)
-      .font('Helvetica')
-      .fillColor('#92400e')
-      .text(
-        'Esta renovación está pendiente de procesamiento.',
-        leftMargin + 20,
-        boxY + 25
-      )
+    currentY -= 20
+    await drawText(page, 'Esta renovación está pendiente de procesamiento.', {
+      x: margin + 20,
+      y: currentY,
+      size: 10,
+      color: rgb(0.57, 0.25, 0.05),
+    })
 
-    doc
-      .fontSize(9)
-      .text(
-        'Nos comunicaremos con usted para confirmar los detalles.',
-        leftMargin + 20,
-        boxY + 45
-      )
+    currentY -= 20
+    await drawText(page, 'Nos comunicaremos con usted para confirmar los detalles.', {
+      x: margin + 20,
+      y: currentY,
+      size: 9,
+      color: rgb(0.57, 0.25, 0.05),
+    })
   } else if (renewal.status === 'RECHAZADA') {
-    doc
-      .fontSize(11)
-      .font('Helvetica-Bold')
-      .fillColor('#ef4444')
-      .text('❌ Renovación Rechazada', leftMargin + 20, boxY)
+    await drawBoldText(page, '❌ Renovación Rechazada', {
+      x: margin + 20,
+      y: currentY,
+      size: 11,
+      color: rgb(0.94, 0.27, 0.27),
+    })
 
-    doc
-      .fontSize(10)
-      .font('Helvetica')
-      .fillColor('#7f1d1d')
-      .text(
-        'Esta renovación no pudo ser procesada.',
-        leftMargin + 20,
-        boxY + 25
-      )
+    currentY -= 20
+    await drawText(page, 'Esta renovación no pudo ser procesada.', {
+      x: margin + 20,
+      y: currentY,
+      size: 10,
+      color: rgb(0.50, 0.11, 0.11),
+    })
 
-    doc
-      .fontSize(9)
-      .text('Contacte con nosotros para más detalles.', leftMargin + 20, boxY + 45)
+    currentY -= 20
+    await drawText(page, 'Contacte con nosotros para más detalles.', {
+      x: margin + 20,
+      y: currentY,
+      size: 9,
+      color: rgb(0.50, 0.11, 0.11),
+    })
   } else {
-    doc
-      .fontSize(11)
-      .font('Helvetica-Bold')
-      .fillColor('#64748b')
-      .text('⚠️ Renovación Vencida', leftMargin + 20, boxY)
+    await drawBoldText(page, '⚠️ Renovación Vencida', {
+      x: margin + 20,
+      y: currentY,
+      size: 11,
+      color: COLORS.textLight,
+    })
 
-    doc
-      .fontSize(10)
-      .font('Helvetica')
-      .fillColor('#334155')
-      .text('Esta renovación ha expirado sin ser procesada.', leftMargin + 20, boxY + 25)
+    currentY -= 20
+    await drawText(page, 'Esta renovación ha expirado sin ser procesada.', {
+      x: margin + 20,
+      y: currentY,
+      size: 10,
+      color: rgb(0.20, 0.26, 0.33),
+    })
   }
 
-  doc.y += boxHeight + 10
+  currentY -= boxHeight + 10
 
   // Contact Information
-  doc.moveDown(1)
-  doc
-    .fontSize(9)
-    .font('Helvetica')
-    .fillColor('#64748b')
-    .text(
-      'Para consultas sobre la renovación de su póliza, contacte con su ejecutivo de seguros.',
-      { align: 'center' }
-    )
+  currentY -= 20
+  currentY = await drawText(page, 'Para consultas sobre la renovación de su póliza, contacte con su ejecutivo de seguros.', {
+    x: margin,
+    y: currentY,
+    size: 9,
+    color: COLORS.textLight,
+    maxWidth: width - margin * 2,
+  })
 
   // Footer disclaimer
-  doc.moveDown(1)
-  doc
-    .fontSize(9)
-    .fillColor('#64748b')
-    .text(
-      'Este documento es un aviso oficial de renovación emitido por SeguroPro.',
-      { align: 'center' }
-    )
+  currentY -= 20
+  currentY = await drawText(page, 'Este documento es un aviso oficial de renovación emitido por SeguroPro.', {
+    x: margin,
+    y: currentY,
+    size: 9,
+    color: COLORS.textLight,
+    maxWidth: width - margin * 2,
+  })
 
-  doc
-    .fontSize(8)
-    .text(`Emitido el: ${formatDate(new Date())}`, { align: 'center' })
+  currentY = await drawText(page, `Emitido el: ${formatDate(new Date())}`, {
+    x: width / 2 - 50,
+    y: currentY - 10,
+    size: 8,
+    color: COLORS.textLight,
+  })
 
-  // Add page numbers to all pages
-  addPageNumbers(doc)
+  // Add footer
+  await addFooter(doc, page, 1)
 
   // Convert to buffer
-  return documentToBuffer(doc)
+  return await documentToBuffer(doc)
 }

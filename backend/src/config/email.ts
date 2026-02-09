@@ -8,6 +8,10 @@ export const transporter = nodemailer.createTransport({
     user: process.env.SMTP_USER,
     pass: process.env.SMTP_PASS,
   },
+  tls: {
+    // Don't fail on invalid certificates (e.g., hostname mismatch)
+    rejectUnauthorized: false,
+  },
 })
 
 export const EMAIL_FROM = process.env.EMAIL_FROM || 'noreply@seguropro.com'

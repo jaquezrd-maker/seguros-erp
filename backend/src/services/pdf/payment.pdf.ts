@@ -1,6 +1,7 @@
 import prisma from '../../config/database'
 import {
   createDocument,
+  addPage,
   addCompanyHeader,
   addFooter,
   addField,
@@ -8,7 +9,9 @@ import {
   formatCurrency,
   formatDate,
   documentToBuffer,
-  addPageNumbers,
+  drawText,
+  drawBoldText,
+  COLORS,
 } from '../../utils/pdf'
 
 export async function generatePaymentReceiptPDF(paymentId: number): Promise<Buffer> {
@@ -48,118 +51,138 @@ export async function generatePaymentReceiptPDF(paymentId: number): Promise<Buff
   }
 
   // Create PDF document
-  const doc = createDocument()
+  const doc = await createDocument()
+  const page = await addPage(doc)
+  const { width, height } = page.getSize()
+  const margin = 50
 
   // Add company header
-  addCompanyHeader(doc, 'Recibo Oficial de Pago')
+  let currentY = await addCompanyHeader(doc, page, 'Recibo Oficial de Pago')
 
   // Receipt number (prominent)
-  doc.moveDown(0.5)
-  doc
-    .fontSize(14)
-    .font('Helvetica-Bold')
-    .fillColor('#0d9488')
-    .text(`Recibo No. ${payment.receiptNumber || payment.id}`, { align: 'center' })
-  doc.moveDown(1)
+  currentY -= 10
+  currentY = await drawBoldText(page, `Recibo No. ${payment.receiptNumber || payment.id}`, {
+    x: width / 2 - 80,
+    y: currentY,
+    size: 14,
+    color: COLORS.primary,
+  })
+  currentY -= 25
 
   // Payment Information Section
-  addSectionHeader(doc, 'Información del Pago')
+  currentY = await addSectionHeader(page, 'Información del Pago', currentY)
 
-  addField(doc, 'Monto Pagado', formatCurrency(Number(payment.amount)), { bold: true })
-  addField(doc, 'Fecha de Pago', formatDate(payment.paymentDate))
-  addField(doc, 'Método de Pago', payment.paymentMethod || '—')
-  addField(doc, 'Estado', payment.status)
+  currentY = await addField(page, 'Monto Pagado', formatCurrency(Number(payment.amount)), currentY, { bold: true })
+  currentY = await addField(page, 'Fecha de Pago', formatDate(payment.paymentDate), currentY)
+  currentY = await addField(page, 'Método de Pago', payment.paymentMethod || '—', currentY)
+  currentY = await addField(page, 'Estado', payment.status, currentY)
   if (payment.dueDate) {
-    addField(doc, 'Fecha de Vencimiento', formatDate(payment.dueDate))
+    currentY = await addField(page, 'Fecha de Vencimiento', formatDate(payment.dueDate), currentY)
   }
 
   // Policy Information Section
-  addSectionHeader(doc, 'Información de la Póliza')
+  currentY -= 10 // Extra spacing
+  currentY = await addSectionHeader(page, 'Información de la Póliza', currentY)
 
-  addField(doc, 'Número de Póliza', payment.policy?.policyNumber || '—')
-  addField(doc, 'Aseguradora', payment.policy?.insurer?.name || '—')
-  addField(doc, 'Tipo de Seguro', payment.policy?.insuranceType?.name || '—')
-  addField(doc, 'Prima Total', formatCurrency(Number(payment.policy?.premium || 0)))
+  currentY = await addField(page, 'Número de Póliza', payment.policy?.policyNumber || '—', currentY)
+  currentY = await addField(page, 'Aseguradora', payment.policy?.insurer?.name || '—', currentY)
+  currentY = await addField(page, 'Tipo de Seguro', payment.policy?.insuranceType?.name || '—', currentY)
+  currentY = await addField(page, 'Prima Total', formatCurrency(Number(payment.policy?.premium || 0)), currentY)
 
   // Client Information Section
-  addSectionHeader(doc, 'Información del Cliente')
+  currentY -= 10 // Extra spacing
+  currentY = await addSectionHeader(page, 'Información del Cliente', currentY)
 
-  addField(doc, 'Nombre', payment.client?.name || '—')
-  addField(doc, 'Cédula/RNC', payment.client?.cedulaRnc || '—')
+  currentY = await addField(page, 'Nombre', payment.client?.name || '—', currentY)
+  currentY = await addField(page, 'Cédula/RNC', payment.client?.cedulaRnc || '—', currentY)
   if (payment.client?.phone) {
-    addField(doc, 'Teléfono', payment.client.phone)
+    currentY = await addField(page, 'Teléfono', payment.client.phone, currentY)
   }
   if (payment.client?.email) {
-    addField(doc, 'Correo Electrónico', payment.client.email)
+    currentY = await addField(page, 'Correo Electrónico', payment.client.email, currentY)
   }
   if (payment.client?.address) {
-    addField(doc, 'Dirección', payment.client.address)
+    currentY = await addField(page, 'Dirección', payment.client.address, currentY)
   }
 
   // Notes Section
   if (payment.notes) {
-    addSectionHeader(doc, 'Notas')
-    doc
-      .fontSize(10)
-      .font('Helvetica')
-      .fillColor('#1e293b')
-      .text(payment.notes, { align: 'left' })
-    doc.moveDown()
+    currentY -= 10 // Extra spacing
+    currentY = await addSectionHeader(page, 'Notas', currentY)
+    currentY = await drawText(page, payment.notes, {
+      x: margin,
+      y: currentY,
+      size: 10,
+      color: COLORS.text,
+      maxWidth: width - margin * 2,
+    })
+    currentY -= 15
   }
 
   // Payment Summary Box
-  doc.moveDown(1)
-  const pageWidth = doc.page.width
-  const leftMargin = 50
-  const rightMargin = 50
-  const boxWidth = pageWidth - leftMargin - rightMargin
+  currentY -= 20
+  const boxWidth = width - margin * 2
   const boxHeight = 60
 
   // Draw summary box
-  doc
-    .rect(leftMargin, doc.y, boxWidth, boxHeight)
-    .fillAndStroke('#f1f5f9', '#cbd5e1')
+  page.drawRectangle({
+    x: margin,
+    y: currentY - boxHeight,
+    width: boxWidth,
+    height: boxHeight,
+    color: COLORS.background,
+    borderColor: COLORS.border,
+    borderWidth: 1,
+  })
 
-  const boxY = doc.y + 15
-  doc
-    .fontSize(11)
-    .font('Helvetica-Bold')
-    .fillColor('#64748b')
-    .text('Total Pagado:', leftMargin + 20, boxY, { continued: true })
-    .fontSize(16)
-    .fillColor('#0d9488')
-    .text(`  ${formatCurrency(Number(payment.amount))}`, { align: 'left' })
+  currentY -= 20
+  await drawBoldText(page, 'Total Pagado:', {
+    x: margin + 20,
+    y: currentY,
+    size: 11,
+    color: COLORS.textLight,
+  })
 
-  doc.y += boxHeight + 10
+  await drawBoldText(page, formatCurrency(Number(payment.amount)), {
+    x: margin + 150,
+    y: currentY,
+    size: 16,
+    color: COLORS.primary,
+  })
+
+  currentY -= boxHeight + 10
 
   // Registered by
   if (payment.creator) {
-    doc.moveDown(1)
-    doc
-      .fontSize(9)
-      .font('Helvetica')
-      .fillColor('#64748b')
-      .text(`Registrado por: ${payment.creator.name}`, { align: 'left' })
+    currentY -= 10
+    currentY = await drawText(page, `Registrado por: ${payment.creator.name}`, {
+      x: margin,
+      y: currentY,
+      size: 9,
+      color: COLORS.textLight,
+    })
   }
 
   // Footer disclaimer
-  doc.moveDown(2)
-  doc
-    .fontSize(9)
-    .font('Helvetica')
-    .fillColor('#64748b')
-    .text(
-      'Este recibo es un documento oficial emitido por SeguroPro. Conserve este recibo como comprobante de pago.',
-      { align: 'center' }
-    )
+  currentY -= 30
+  currentY = await drawText(page, 'Este recibo es un documento oficial emitido por SeguroPro. Conserve este recibo como comprobante de pago.', {
+    x: margin,
+    y: currentY,
+    size: 9,
+    color: COLORS.textLight,
+    maxWidth: width - margin * 2,
+  })
 
-  doc
-    .fontSize(8)
-    .text(`Emitido el: ${formatDate(new Date())}`, { align: 'center' })
+  currentY = await drawText(page, `Emitido el: ${formatDate(new Date())}`, {
+    x: width / 2 - 50,
+    y: currentY - 10,
+    size: 8,
+    color: COLORS.textLight,
+  })
 
-  // Add page numbers to all pages
-  addPageNumbers(doc)
+  // Add footer
+  await addFooter(doc, page, 1)
 
   // Convert to buffer
-  return documentToBuffer(doc)
+  return await documentToBuffer(doc)
 }
