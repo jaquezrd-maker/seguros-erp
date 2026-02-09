@@ -10,7 +10,7 @@ import Modal from "../../components/ui/Modal"
 import ConfirmDialog from "../../components/ui/ConfirmDialog"
 import EmailDialog from "../../components/ui/EmailDialog"
 import { useState, useEffect, useRef } from "react"
-import { api } from "../../api/client"
+import { api, getAuthHeaders } from "../../api/client"
 
 function daysLeft(dateStr: string): number {
   const diff = new Date(dateStr).getTime() - Date.now()
@@ -27,8 +27,9 @@ export default function RenewalsPage() {
 
   const handlePrintPDF = async (id: number) => {
     try {
+      const headers = await getAuthHeaders()
       const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3000/api'}/renewals/${id}/pdf`, {
-        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
+        headers,
       })
       if (!response.ok) throw new Error('Error al generar PDF')
       const blob = await response.blob()

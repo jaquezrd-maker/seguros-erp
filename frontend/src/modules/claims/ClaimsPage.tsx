@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react"
 import { AlertTriangle, Printer, Mail } from "lucide-react"
 import useCrudModule from "../../hooks/useCrudModule"
-import { api } from "../../api/client"
+import { api, getAuthHeaders } from "../../api/client"
 import type { Claim, Policy, PaginatedResponse } from "../../types"
 import { fmt, fmtDate, toDateInput } from "../../utils/format"
 import StatusBadge from "../../components/ui/StatusBadge"
@@ -24,8 +24,9 @@ export default function ClaimsPage() {
 
   const handlePrintPDF = async (id: number) => {
     try {
+      const headers = await getAuthHeaders()
       const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3000/api'}/claims/${id}/pdf`, {
-        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
+        headers,
       })
       if (!response.ok) throw new Error('Error al generar PDF')
       const blob = await response.blob()
