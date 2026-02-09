@@ -1,7 +1,7 @@
 import { DollarSign } from "lucide-react"
 import { useState, useEffect } from "react"
 import useCrudModule from "../../hooks/useCrudModule"
-import type { Commission, Policy, User, PaginatedResponse } from "../../types"
+import type { Commission, Policy, ERPUser, PaginatedResponse } from "../../types"
 import { fmt, fmtDate } from "../../utils/format"
 import StatusBadge from "../../components/ui/StatusBadge"
 import DataTable from "../../components/ui/DataTable"
@@ -39,11 +39,11 @@ export default function CommissionsPage() {
   const pendienteCount = crud.summary?.pendienteCount ?? 0
 
   const [policies, setPolicies] = useState<Policy[]>([])
-  const [producers, setProducers] = useState<User[]>([])
+  const [producers, setProducers] = useState<ERPUser[]>([])
 
   useEffect(() => {
     api.get<PaginatedResponse<Policy>>("/policies?limit=500").then(r => setPolicies(r.data)).catch(() => {})
-    api.get<PaginatedResponse<User>>("/users?limit=500").then(r => setProducers(r.data)).catch(() => {})
+    api.get<PaginatedResponse<ERPUser>>("/users?limit=500").then(r => setProducers(r.data)).catch(() => {})
   }, [])
 
   const handleMarkPaid = async (commission: Commission) => {
