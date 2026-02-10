@@ -195,10 +195,60 @@ export class PaymentsController {
     }
   }
 
+  async previewEmail(req: Request, res: Response) {
+    try {
+      const id = Number(req.params.id)
+      const { recipients, includeAttachment } = req.query
+
+      // Fetch payment data
+      const payment = await paymentsService.findById(id)
+
+      // Determine email recipients
+      const emailRecipients: string[] = []
+      const recipientsList = typeof recipients === 'string' ? recipients.split(',') : []
+
+      if (recipientsList.includes('client') && payment.client?.email) {
+        emailRecipients.push(payment.client.email)
+      }
+      if (recipientsList.includes('internal')) {
+        const internalEmail = process.env.INTERNAL_EMAIL || 'admin@seguropro.com'
+        emailRecipients.push(internalEmail)
+      }
+
+      // Generate email content
+      const emailTemplate = paymentConfirmationEmail({
+        clientName: payment.client?.name || 'Cliente',
+        policyNumber: payment.policy?.policyNumber || '',
+        amount: Number(payment.amount),
+        paymentDate: formatDate(payment.paymentDate),
+        paymentMethod: payment.paymentMethod || '',
+        receiptNumber: payment.receiptNumber || undefined,
+        remainingBalance: undefined,
+      })
+
+      // Return preview data
+      return res.json({
+        success: true,
+        data: {
+          recipients: emailRecipients,
+          subject: emailTemplate.subject,
+          html: emailTemplate.html,
+          hasAttachment: includeAttachment === 'true',
+          receiptNumber: payment.receiptNumber || payment.id,
+        }
+      })
+    } catch (error: any) {
+      return res.status(500).json({
+        success: false,
+        message: error.message || 'Error al cargar preview',
+      })
+    }
+  }
+
   async sendEmail(req: Request, res: Response) {
     try {
       const id = Number(req.params.id)
-      const { recipients, includeAttachment } = req.body
+      const { recipients, includeAttachment, customSubject, customHtml } = req.body
 
       // Fetch payment data
       const payment = await paymentsService.findById(id)
@@ -247,12 +297,16 @@ export class PaymentsController {
         remainingBalance,
       })
 
+      // Use custom subject/html if provided, otherwise use template
+      const emailSubject = customSubject || emailTemplate.subject
+      const emailHtml = customHtml || emailTemplate.html
+
       // Send email with debug
       const result = await sendEmailWithDebug(
         {
           to: emailRecipients,
-          subject: emailTemplate.subject,
-          html: emailTemplate.html,
+          subject: emailSubject,
+          html: emailHtml,
           attachments,
         },
         {

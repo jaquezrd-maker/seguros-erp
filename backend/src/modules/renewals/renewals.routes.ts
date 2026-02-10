@@ -26,6 +26,9 @@ router.post('/generate', adminEjecutivo, controller.generate)
 // GET /renewals/:id/pdf — Generate renewal PDF (must be before /:id)
 router.get('/:id/pdf', adminEjecutivo, controller.generatePDF)
 
+// GET /renewals/:id/email/preview — Preview renewal email (must be before /:id)
+router.get('/:id/email/preview', adminEjecutivo, controller.previewEmail)
+
 // POST /renewals/:id/email — Send renewal email (must be before /:id)
 router.post(
   '/:id/email',
