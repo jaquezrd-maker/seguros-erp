@@ -174,6 +174,24 @@ export default function PoliciesPage() {
     }
   }
 
+  const handleReactivate = async (policy: Policy) => {
+    try {
+      const response = await api.post<{ success: boolean; data: Policy; message: string }>(`/policies/${policy.id}/reactivate`, {})
+      if (response.success) {
+        // Recargar la póliza para mostrar el estado actualizado
+        const updatedPolicy = await api.get<{ success: boolean; data: Policy }>(`/policies/${policy.id}`)
+        if (updatedPolicy.success) {
+          crud.openView(updatedPolicy.data)
+          crud.setSuccess(response.message || `Póliza ${policy.policyNumber} reactivada exitosamente`)
+          crud.fetchItems() // Recargar la lista
+        }
+      }
+    } catch (error: any) {
+      console.error("Error al reactivar póliza:", error)
+      crud.setError(error.response?.data?.message || "Error al reactivar la póliza")
+    }
+  }
+
   const handlePrintPDF = async (id: number) => {
     try {
       const headers = await getAuthHeaders()
@@ -449,6 +467,19 @@ export default function PoliciesPage() {
 
             {crud.selected.status === "CANCELADA" && (
               <div className="pt-4 border-t border-slate-700">
+                <div className="bg-green-500/10 border border-green-500/30 rounded-xl p-4 mb-4">
+                  <p className="text-green-400 text-sm mb-2 font-semibold">🔄 Reactivar Póliza</p>
+                  <p className="text-slate-400 text-xs mb-3">
+                    Puedes reactivar esta póliza cancelada cambiando su estado a VIGENTE.
+                  </p>
+                  <button
+                    onClick={() => handleReactivate(crud.selected!)}
+                    className="px-4 py-2 rounded-xl bg-green-600 hover:bg-green-500 text-white text-sm font-semibold transition-colors"
+                  >
+                    Reactivar Póliza
+                  </button>
+                </div>
+
                 <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-4 mb-4">
                   <p className="text-red-400 text-sm mb-2 font-semibold">⚠️ Zona de Peligro</p>
                   <p className="text-slate-400 text-xs mb-3">
