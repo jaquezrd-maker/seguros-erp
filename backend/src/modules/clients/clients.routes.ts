@@ -17,6 +17,27 @@ router.get(
   clientsController.list,
 )
 
+// GET /:id/pdf - Generate client statement PDF (must be before /:id)
+router.get(
+  '/:id/pdf',
+  rbacMiddleware(['ADMINISTRADOR', 'EJECUTIVO', 'SOLO_LECTURA']),
+  clientsController.generatePDF,
+)
+
+// GET /:id/email/preview - Preview client email (must be before /:id)
+router.get(
+  '/:id/email/preview',
+  rbacMiddleware(['ADMINISTRADOR', 'EJECUTIVO']),
+  clientsController.previewEmail,
+)
+
+// POST /:id/email - Send client email (must be before /:id)
+router.post(
+  '/:id/email',
+  rbacMiddleware(['ADMINISTRADOR', 'EJECUTIVO']),
+  clientsController.sendEmail,
+)
+
 // GET /:id - Get client by ID
 router.get(
   '/:id',
