@@ -85,10 +85,10 @@ export async function generateRenewalNoticePDF(renewalId: number): Promise<Buffe
   }
 
   const statusTextMap: Record<string, string> = {
-    PENDIENTE: '⏳ Renovación Pendiente',
-    PROCESADA: '✅ Renovación Procesada',
-    RECHAZADA: '❌ Renovación Rechazada',
-    VENCIDA: '⚠️ Renovación Vencida',
+    PENDIENTE: 'Renovación Pendiente',
+    PROCESADA: 'Renovación Procesada',
+    RECHAZADA: 'Renovación Rechazada',
+    VENCIDA: 'Renovación Vencida',
   }
 
   const statusColor = statusColorMap[renewal.status] || COLORS.textLight
@@ -180,7 +180,7 @@ export async function generateRenewalNoticePDF(renewalId: number): Promise<Buffe
   currentY -= 20
 
   if (renewal.status === 'PROCESADA') {
-    await drawBoldText(page, '✅ Renovación Completada', {
+    await drawBoldText(page, 'Renovación Completada', {
       x: margin + 20,
       y: currentY,
       size: 12,
@@ -215,7 +215,7 @@ export async function generateRenewalNoticePDF(renewalId: number): Promise<Buffe
       })
     }
   } else if (renewal.status === 'PENDIENTE') {
-    await drawBoldText(page, '⏳ Renovación en Proceso', {
+    await drawBoldText(page, 'Renovación en Proceso', {
       x: margin + 20,
       y: currentY,
       size: 11,
@@ -238,7 +238,7 @@ export async function generateRenewalNoticePDF(renewalId: number): Promise<Buffe
       color: rgb(0.57, 0.25, 0.05),
     })
   } else if (renewal.status === 'RECHAZADA') {
-    await drawBoldText(page, '❌ Renovación Rechazada', {
+    await drawBoldText(page, 'Renovación Rechazada', {
       x: margin + 20,
       y: currentY,
       size: 11,
@@ -261,7 +261,7 @@ export async function generateRenewalNoticePDF(renewalId: number): Promise<Buffe
       color: rgb(0.50, 0.11, 0.11),
     })
   } else {
-    await drawBoldText(page, '⚠️ Renovación Vencida', {
+    await drawBoldText(page, 'Renovación Vencida', {
       x: margin + 20,
       y: currentY,
       size: 11,
