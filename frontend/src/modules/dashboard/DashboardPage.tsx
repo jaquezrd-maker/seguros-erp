@@ -4,6 +4,7 @@ import { api } from "../../api/client"
 import { fmt, fmtDate } from "../../utils/format"
 import StatCard from "../../components/ui/StatCard"
 import StatusBadge from "../../components/ui/StatusBadge"
+import Calendar from "../../components/calendar/Calendar"
 
 interface DashboardData {
   totalClients: number
@@ -76,6 +77,12 @@ export default function DashboardPage() {
         <StatCard title="Pólizas Activas" value={data?.activePolicies ?? 0} subtitle={`${data?.totalPolicies ?? 0} total`} icon={Shield} color="indigo" />
         <StatCard title="Prima Total" value={fmt(data?.totalPremium ?? 0)} icon={TrendingUp} color="emerald" />
         <StatCard title="Siniestros Pendientes" value={data?.pendingClaims ?? 0} subtitle={`${data?.totalClaims ?? 0} total`} icon={AlertTriangle} color="red" />
+      </div>
+
+      {/* Calendar Section */}
+      <div className="mb-6">
+        <h2 className="text-lg font-semibold text-white mb-4">Calendario de Eventos y Recordatorios</h2>
+        <Calendar />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
