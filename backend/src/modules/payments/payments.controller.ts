@@ -1,7 +1,7 @@
 import { Request, Response } from 'express'
 import { PaymentsService } from './payments.service'
 import { generatePaymentReceiptPDF } from '../../services/pdf/payment.pdf'
-import { sendEmail } from '../../config/email'
+import { sendEmailWithDebug, formatEmailErrorResponse } from '../../utils/emailHelper'
 import { paymentConfirmationEmail } from '../../utils/emailTemplates'
 import { formatDate } from '../../utils/pdf'
 
@@ -247,25 +247,24 @@ export class PaymentsController {
         remainingBalance,
       })
 
-      // Send email
-      await sendEmail({
-        to: emailRecipients,
-        subject: emailTemplate.subject,
-        html: emailTemplate.html,
-        attachments,
-      })
+      // Send email with debug
+      const result = await sendEmailWithDebug(
+        {
+          to: emailRecipients,
+          subject: emailTemplate.subject,
+          html: emailTemplate.html,
+          attachments,
+        },
+        {
+          module: 'payments',
+          action: 'send_confirmation',
+          recordId: id,
+        }
+      )
 
-      return res.json({
-        success: true,
-        message: `Email enviado a ${emailRecipients.length} destinatario(s)`,
-      })
+      return res.json(result)
     } catch (error: any) {
-      console.error('[Payment Email] Error:', error)
-      return res.status(500).json({
-        success: false,
-        message: error.message || 'Error al enviar email',
-        details: process.env.NODE_ENV === 'development' ? error.stack : undefined,
-      })
+      return res.status(500).json(formatEmailErrorResponse(error))
     }
   }
 }

@@ -2,7 +2,7 @@ import { Request, Response } from 'express'
 import { ClaimsService } from './claims.service'
 import { ClaimStatus, ClaimPriority } from '@prisma/client'
 import { generateClaimReportPDF } from '../../services/pdf/claim.pdf'
-import { sendEmail } from '../../config/email'
+import { sendEmailWithDebug, formatEmailErrorResponse } from '../../utils/emailHelper'
 import { claimUpdateEmail } from '../../utils/emailTemplates'
 
 const claimsService = new ClaimsService()
@@ -233,23 +233,24 @@ export class ClaimsController {
         approvedAmount: claim.approvedAmount ? Number(claim.approvedAmount) : undefined,
       })
 
-      // Send email
-      await sendEmail({
-        to: emailRecipients,
-        subject: emailTemplate.subject,
-        html: emailTemplate.html,
-        attachments,
-      })
+      // Send email with debug
+      const result = await sendEmailWithDebug(
+        {
+          to: emailRecipients,
+          subject: emailTemplate.subject,
+          html: emailTemplate.html,
+          attachments,
+        },
+        {
+          module: 'claims',
+          action: 'send_confirmation',
+          recordId: id,
+        }
+      )
 
-      return res.json({
-        success: true,
-        message: `Email enviado a ${emailRecipients.length} destinatario(s)`,
-      })
+      return res.json(result)
     } catch (error: any) {
-      return res.status(500).json({
-        success: false,
-        message: error.message || 'Error al enviar email',
-      })
+      return res.status(500).json(formatEmailErrorResponse(error))
     }
   }
 }

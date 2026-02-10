@@ -2,7 +2,7 @@ import { Request, Response, NextFunction } from 'express'
 import { policiesService } from './policies.service'
 import { PolicyStatus } from '@prisma/client'
 import { generatePolicyPDF } from '../../services/pdf/policy.pdf'
-import { sendEmail } from '../../config/email'
+import { sendEmailWithDebug, formatEmailErrorResponse } from '../../utils/emailHelper'
 import { policyExpiredEmail, policyExpiringSoonEmail } from '../../utils/emailTemplates'
 import { formatDate } from '../../utils/pdf'
 
@@ -199,20 +199,24 @@ export const policiesController = {
         })
       }
 
-      // Send email
-      await sendEmail({
-        to: emailRecipients,
-        subject: emailTemplate.subject,
-        html: emailTemplate.html,
-        attachments,
-      })
+      // Send email with debug
+      const result = await sendEmailWithDebug(
+        {
+          to: emailRecipients,
+          subject: emailTemplate.subject,
+          html: emailTemplate.html,
+          attachments,
+        },
+        {
+          module: 'policies',
+          action: 'send_confirmation',
+          recordId: id,
+        }
+      )
 
-      res.json({
-        success: true,
-        message: `Email enviado a ${emailRecipients.length} destinatario(s)`,
-      })
-    } catch (error) {
-      next(error)
+      res.json(result)
+    } catch (error: any) {
+      res.status(500).json(formatEmailErrorResponse(error))
     }
   },
 }
