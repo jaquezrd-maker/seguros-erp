@@ -46,14 +46,23 @@ export async function sendEmail(options: {
   }
 
   try {
+    console.log('[Email] Attempting to send:', {
+      from: EMAIL_FROM,
+      to: recipients,
+      subject: options.subject,
+      hasAttachments: !!options.attachments?.length,
+    })
+
     const response = await sgMail.send(msg)
     console.log('[Email] Sent successfully:', options.subject, 'to', recipients.join(', '))
     return response
   } catch (error: any) {
     console.error('[Email] Failed to send:', error.message)
+    console.error('[Email] Recipients were:', recipients)
+    console.error('[Email] From was:', EMAIL_FROM)
     if (error.response) {
-      console.error('[Email] SendGrid error:', error.response.body)
+      console.error('[Email] SendGrid error details:', JSON.stringify(error.response.body, null, 2))
     }
-    throw error
+    throw new Error(`SendGrid error: ${error.message}`)
   }
 }
