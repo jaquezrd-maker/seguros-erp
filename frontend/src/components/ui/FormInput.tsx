@@ -3,13 +3,14 @@ interface FormInputProps {
   type?: string
   value: string | number | null | undefined
   onChange: (value: string) => void
+  onBlur?: () => void
   options?: Array<string | { value: string | number; label: string }>
   placeholder?: string
   required?: boolean
   disabled?: boolean
 }
 
-export default function FormInput({ label, type = "text", value: rawValue, onChange, options, placeholder, required, disabled }: FormInputProps) {
+export default function FormInput({ label, type = "text", value: rawValue, onChange, onBlur, options, placeholder, required, disabled }: FormInputProps) {
   let value: string | number = rawValue ?? ""
   // Normalize ISO datetime to YYYY-MM-DD for date inputs
   if (type === "date" && typeof value === "string" && value.includes("T")) {
@@ -32,7 +33,7 @@ export default function FormInput({ label, type = "text", value: rawValue, onCha
         <textarea value={value} onChange={e => onChange(e.target.value)} placeholder={placeholder} rows={3} disabled={disabled}
           className="w-full px-3 py-2.5 rounded-xl bg-slate-700 border border-slate-600 text-white text-sm focus:outline-none focus:border-teal-500 transition-all resize-none disabled:opacity-50" />
       ) : (
-        <input type={type} value={value} onChange={e => onChange(e.target.value)} placeholder={placeholder} disabled={disabled}
+        <input type={type} value={value} onChange={e => onChange(e.target.value)} onBlur={onBlur} placeholder={placeholder} disabled={disabled}
           className="w-full px-3 py-2.5 rounded-xl bg-slate-700 border border-slate-600 text-white text-sm placeholder-slate-500 focus:outline-none focus:border-teal-500 transition-all disabled:opacity-50" />
       )}
     </div>

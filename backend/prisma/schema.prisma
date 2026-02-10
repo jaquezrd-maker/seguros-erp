@@ -74,6 +74,7 @@ enum UserRole {
   EJECUTIVO
   CONTABILIDAD
   SOLO_LECTURA
+  CLIENTE
 }
 
 enum UserStatus {
@@ -133,14 +134,17 @@ model Client {
   status            ClientStatus @default(ACTIVO)
   notes             String?      @db.Text
   createdBy Int?         @map("created_by")
+  userId    Int?         @unique @map("user_id")
   createdAt DateTime     @default(now()) @map("created_at")
   updatedAt DateTime     @updatedAt @map("updated_at")
 
-  creator  User?           @relation("ClientCreator", fields: [createdBy], references: [id])
-  policies Policy[]
-  payments Payment[]
-  contacts ClientContact[]
-  events   Event[]
+  creator           User?             @relation("ClientCreator", fields: [createdBy], references: [id])
+  user              User?             @relation("ClientPortalUser", fields: [userId], references: [id])
+  policies          Policy[]
+  payments          Payment[]
+  contacts          ClientContact[]
+  events            Event[]
+  clientInvitations ClientInvitation[]
 
   @@index([status])
   @@index([cedulaRnc])
@@ -386,22 +390,26 @@ model User {
   name            String     @db.VarChar(150)
   email           String     @unique @db.VarChar(150)
   role            UserRole   @default(EJECUTIVO)
-  phone           String?    @db.VarChar(20)
-  status          UserStatus @default(ACTIVO)
-  lastLogin       DateTime?  @map("last_login")
-  createdAt       DateTime   @default(now()) @map("created_at")
-  updatedAt       DateTime   @updatedAt @map("updated_at")
+  phone               String?            @db.VarChar(20)
+  status              UserStatus         @default(ACTIVO)
+  forcePasswordChange Boolean            @default(false) @map("force_password_change")
+  lastLogin           DateTime?          @map("last_login")
+  createdAt           DateTime           @default(now()) @map("created_at")
+  updatedAt           DateTime           @updatedAt @map("updated_at")
 
-  createdClients  Client[]     @relation("ClientCreator")
-  createdPolicies Policy[]     @relation("PolicyCreator")
-  createdPayments Payment[]    @relation("PaymentCreator")
-  assignedClaims  Claim[]      @relation("ClaimAssignee")
-  claimNotes      ClaimNote[]
-  commissions     Commission[] @relation("ProducerCommissions")
-  renewals        Renewal[]    @relation("RenewalProcessor")
-  auditLogs       AuditLog[]
-  documents       Document[]
-  events          Event[]
+  createdClients     Client[]           @relation("ClientCreator")
+  portalClient       Client?            @relation("ClientPortalUser")
+  createdPolicies    Policy[]           @relation("PolicyCreator")
+  createdPayments    Payment[]          @relation("PaymentCreator")
+  assignedClaims     Claim[]            @relation("ClaimAssignee")
+  claimNotes         ClaimNote[]
+  commissions        Commission[]       @relation("ProducerCommissions")
+  renewals           Renewal[]          @relation("RenewalProcessor")
+  auditLogs          AuditLog[]
+  documents          Document[]
+  events             Event[]
+  tasks              Task[]
+  invitationsCreated ClientInvitation[] @relation("InvitationCreator")
 
   @@map("users")
 }
@@ -485,4 +493,49 @@ model Event {
   @@index([startDate])
   @@index([type])
   @@map("events")
+}
+
+model Task {
+  id          Int       @id @default(autoincrement())
+  title       String    @db.VarChar(200)
+  description String?   @db.Text
+  completed   Boolean   @default(false)
+  priority    TaskPriority @default(MEDIA)
+  dueDate     DateTime? @map("due_date") @db.Date
+  userId      Int       @map("user_id")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([completed])
+  @@index([dueDate])
+  @@map("tasks")
+}
+
+enum TaskPriority {
+  BAJA
+  MEDIA
+  ALTA
+  URGENTE
+}
+
+model ClientInvitation {
+  id        Int      @id @default(autoincrement())
+  clientId  Int      @map("client_id")
+  email     String   @db.VarChar(150)
+  token     String   @unique @db.VarChar(64)
+  expiresAt DateTime @map("expires_at")
+  accepted  Boolean  @default(false)
+  createdBy Int      @map("created_by")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  client  Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  creator User   @relation("InvitationCreator", fields: [createdBy], references: [id])
+
+  @@index([token])
+  @@index([email])
+  @@index([clientId])
+  @@map("client_invitations")
 }

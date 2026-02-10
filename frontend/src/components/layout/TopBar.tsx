@@ -1,4 +1,4 @@
-import { Bell, LogOut, X, Sun, Moon } from "lucide-react"
+import { Bell, LogOut, X, Sun, Moon, Menu } from "lucide-react"
 import { useAuth } from "../../context/AuthContext"
 import { useTheme } from "../../context/ThemeContext"
 import { useState, useEffect } from "react"
@@ -10,6 +10,7 @@ interface TopBarProps {
   collapsed: boolean
   userName?: string
   userRole?: string
+  onMenuClick: () => void
 }
 
 interface Renewal {
@@ -26,7 +27,7 @@ interface Payment {
   client?: { name: string }
 }
 
-export default function TopBar({ title, collapsed, userName = "Usuario", userRole = "Usuario" }: TopBarProps) {
+export default function TopBar({ title, collapsed, userName = "Usuario", userRole = "Usuario", onMenuClick }: TopBarProps) {
   const { signOut } = useAuth()
   const { theme, toggleTheme } = useTheme()
   const initials = userName.split(" ").map(n => n[0]).slice(0, 2).join("").toUpperCase()
@@ -48,8 +49,17 @@ export default function TopBar({ title, collapsed, userName = "Usuario", userRol
   const notificationCount = renewals.length + overduePayments.length
 
   return (
-    <header className={`fixed top-0 right-0 h-16 bg-slate-900/80 backdrop-blur-xl border-b border-slate-700/50 z-30 flex items-center justify-between px-6 transition-all duration-300 ${collapsed ? "left-[68px]" : "left-[250px]"}`}>
-      <h2 className="text-lg font-semibold text-white">{title}</h2>
+    <header className={`fixed top-0 right-0 h-16 bg-slate-900/80 backdrop-blur-xl border-b border-slate-700/50 z-30 flex items-center justify-between px-4 md:px-6 transition-all duration-300 left-0 ${collapsed ? "md:left-[68px]" : "md:left-[250px]"}`}>
+      <div className="flex items-center gap-3">
+        <button
+          onClick={onMenuClick}
+          className="p-2 rounded-xl hover:bg-slate-800 text-white md:hidden"
+          aria-label="Toggle navigation menu"
+        >
+          <Menu size={20} />
+        </button>
+        <h2 className="text-base md:text-lg font-semibold text-white truncate">{title}</h2>
+      </div>
       <div className="flex items-center gap-3">
         <div className="relative">
           <button 
@@ -63,7 +73,7 @@ export default function TopBar({ title, collapsed, userName = "Usuario", userRol
           </button>
           
           {showNotifications && (
-            <div className="absolute right-0 mt-2 w-80 bg-slate-800 border border-slate-700 rounded-xl shadow-xl overflow-hidden z-50">
+            <div className="absolute right-0 mt-2 w-[calc(100vw-2rem)] md:w-80 bg-slate-800 border border-slate-700 rounded-xl shadow-xl overflow-hidden z-50">
               <div className="flex items-center justify-between p-3 border-b border-slate-700">
                 <h3 className="text-sm font-semibold text-white">Notificaciones</h3>
                 <button onClick={() => setShowNotifications(false)} className="text-slate-400 hover:text-white">
@@ -102,9 +112,9 @@ export default function TopBar({ title, collapsed, userName = "Usuario", userRol
             </div>
           )}
         </div>
-        <button 
-          onClick={toggleTheme} 
-          className="p-2 rounded-xl hover:bg-slate-800 text-slate-400 hover:text-white transition-colors" 
+        <button
+          onClick={toggleTheme}
+          className="hidden sm:flex p-2 rounded-xl hover:bg-slate-800 text-slate-400 hover:text-white transition-colors items-center"
           title={theme === 'dark' ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro'}
         >
           {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}

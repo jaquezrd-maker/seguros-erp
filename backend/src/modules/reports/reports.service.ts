@@ -290,4 +290,218 @@ export class ReportsService {
       claims,
     }
   }
+
+  async getProductionByPeriod(year: number, groupBy: 'month' | 'year' = 'month') {
+    const startDate = new Date(year, 0, 1)
+    const endDate = new Date(year, 11, 31, 23, 59, 59)
+
+    const policies = await prisma.policy.findMany({
+      where: {
+        createdAt: {
+          gte: startDate,
+          lte: endDate,
+        },
+      },
+      include: {
+        insurer: {
+          select: { id: true, name: true },
+        },
+        insuranceType: {
+          select: { id: true, name: true },
+        },
+      },
+      orderBy: { createdAt: 'asc' },
+    })
+
+    if (groupBy === 'month') {
+      // Group by month
+      const byMonth: Record<string, { count: number; premium: number; policies: any[] }> = {}
+
+      for (let month = 0; month < 12; month++) {
+        const monthKey = `${year}-${String(month + 1).padStart(2, '0')}`
+        byMonth[monthKey] = { count: 0, premium: 0, policies: [] }
+      }
+
+      for (const policy of policies) {
+        const month = policy.createdAt.getMonth()
+        const monthKey = `${year}-${String(month + 1).padStart(2, '0')}`
+
+        byMonth[monthKey].count++
+        byMonth[monthKey].premium += Number(policy.premium)
+        byMonth[monthKey].policies.push(policy)
+      }
+
+      return {
+        year,
+        groupBy: 'month',
+        totalPolicies: policies.length,
+        totalPremium: policies.reduce((sum, p) => sum + Number(p.premium), 0),
+        data: Object.entries(byMonth).map(([month, data]) => ({
+          period: month,
+          count: data.count,
+          premium: data.premium,
+        })),
+      }
+    } else {
+      // Group by year (single year summary)
+      return {
+        year,
+        groupBy: 'year',
+        totalPolicies: policies.length,
+        totalPremium: policies.reduce((sum, p) => sum + Number(p.premium), 0),
+        data: [{
+          period: year.toString(),
+          count: policies.length,
+          premium: policies.reduce((sum, p) => sum + Number(p.premium), 0),
+        }],
+      }
+    }
+  }
+
+  async getNewVsRenewedClients(startDate: string, endDate: string) {
+    const start = new Date(startDate)
+    const end = new Date(endDate)
+
+    // Get all policies in the period
+    const policiesInPeriod = await prisma.policy.findMany({
+      where: {
+        createdAt: {
+          gte: start,
+          lte: end,
+        },
+      },
+      include: {
+        client: {
+          select: { id: true, name: true, createdAt: true },
+        },
+      },
+      orderBy: { createdAt: 'asc' },
+    })
+
+    // Get unique clients from these policies
+    const clientIds = [...new Set(policiesInPeriod.map(p => p.clientId))]
+
+    // For each client, check if they had policies before this period
+    const clientAnalysis = await Promise.all(
+      clientIds.map(async (clientId) => {
+        const client = policiesInPeriod.find(p => p.clientId === clientId)?.client
+
+        // Count policies before the period
+        const policiesBeforePeriod = await prisma.policy.count({
+          where: {
+            clientId,
+            createdAt: {
+              lt: start,
+            },
+          },
+        })
+
+        // Count policies in the period
+        const policiesInThisPeriod = policiesInPeriod.filter(p => p.clientId === clientId).length
+        const premiumInPeriod = policiesInPeriod
+          .filter(p => p.clientId === clientId)
+          .reduce((sum, p) => sum + Number(p.premium), 0)
+
+        return {
+          clientId,
+          clientName: client?.name || 'Unknown',
+          isNew: policiesBeforePeriod === 0,
+          policiesInPeriod: policiesInThisPeriod,
+          premiumInPeriod,
+        }
+      })
+    )
+
+    const newClients = clientAnalysis.filter(c => c.isNew)
+    const renewedClients = clientAnalysis.filter(c => !c.isNew)
+
+    return {
+      period: { startDate, endDate },
+      summary: {
+        totalClients: clientAnalysis.length,
+        newClients: newClients.length,
+        renewedClients: renewedClients.length,
+        newClientsPremium: newClients.reduce((sum, c) => sum + c.premiumInPeriod, 0),
+        renewedClientsPremium: renewedClients.reduce((sum, c) => sum + c.premiumInPeriod, 0),
+        retentionRate: clientAnalysis.length > 0
+          ? ((renewedClients.length / clientAnalysis.length) * 100).toFixed(2)
+          : 0,
+      },
+      newClients: newClients.map(c => ({
+        id: c.clientId,
+        name: c.clientName,
+        policies: c.policiesInPeriod,
+        premium: c.premiumInPeriod,
+      })),
+      renewedClients: renewedClients.map(c => ({
+        id: c.clientId,
+        name: c.clientName,
+        policies: c.policiesInPeriod,
+        premium: c.premiumInPeriod,
+      })),
+    }
+  }
+
+  async getTopInsurers(startDate: string, endDate: string, limit: number = 10) {
+    const start = new Date(startDate)
+    const end = new Date(endDate)
+
+    const policies = await prisma.policy.findMany({
+      where: {
+        createdAt: {
+          gte: start,
+          lte: end,
+        },
+      },
+      include: {
+        insurer: {
+          select: { id: true, name: true },
+        },
+        commissions: {
+          select: { amount: true },
+        },
+      },
+    })
+
+    // Group by insurer
+    const byInsurer: Record<number, {
+      id: number
+      name: string
+      policies: number
+      premium: number
+      commissions: number
+    }> = {}
+
+    for (const policy of policies) {
+      const insurerId = policy.insurer.id
+      if (!byInsurer[insurerId]) {
+        byInsurer[insurerId] = {
+          id: insurerId,
+          name: policy.insurer.name,
+          policies: 0,
+          premium: 0,
+          commissions: 0,
+        }
+      }
+      byInsurer[insurerId].policies++
+      byInsurer[insurerId].premium += Number(policy.premium)
+      byInsurer[insurerId].commissions += policy.commissions.reduce(
+        (sum, c) => sum + Number(c.amount),
+        0
+      )
+    }
+
+    // Sort by premium (most profitable) and limit
+    const sortedInsurers = Object.values(byInsurer)
+      .sort((a, b) => b.premium - a.premium)
+      .slice(0, limit)
+
+    return {
+      period: { startDate, endDate },
+      topInsurers: sortedInsurers.map((insurer, index) => ({
+        rank: index + 1,
+        ...insurer,
+      })),
+    }
+  }
 }

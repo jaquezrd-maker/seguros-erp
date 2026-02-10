@@ -16,6 +16,20 @@ router.get(
   controller.list
 )
 
+// GET /search?name=... - Search company by name in DGII database (must be before /:id)
+router.get(
+  '/search',
+  rbacMiddleware(['ADMINISTRADOR']),
+  controller.searchName
+)
+
+// GET /rnc/:rnc - Lookup RNC in DGII database (must be before /:id)
+router.get(
+  '/rnc/:rnc',
+  rbacMiddleware(['ADMINISTRADOR']),
+  controller.lookupRNC
+)
+
 router.get(
   '/:id',
   rbacMiddleware(['ADMINISTRADOR', 'EJECUTIVO', 'SOLO_LECTURA']),

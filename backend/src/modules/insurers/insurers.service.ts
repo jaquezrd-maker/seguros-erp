@@ -91,9 +91,12 @@ export class InsurersService {
   async update(id: number, data: Prisma.InsurerUpdateInput) {
     await this.findById(id)
 
+    // Remove non-updatable fields
+    const { id: _, createdAt, updatedAt, _count, ...updateData } = data as any
+
     return prisma.insurer.update({
       where: { id },
-      data,
+      data: updateData,
     })
   }
 

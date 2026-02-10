@@ -230,7 +230,7 @@ export class UsersService {
     // Hard delete: eliminación permanente
     if (permanent) {
       // Verificar si tiene datos relacionados
-      const hasRelatedData = 
+      const hasRelatedData =
         existing.createdClients.length > 0 ||
         existing.createdPolicies.length > 0 ||
         existing.createdPayments.length > 0 ||
@@ -243,6 +243,24 @@ export class UsersService {
         )
       }
 
+      // Eliminar usuario de Supabase Auth primero (si tiene supabaseUserId)
+      if (existing.supabaseUserId) {
+        try {
+          const { error } = await supabaseAdmin.auth.admin.deleteUser(existing.supabaseUserId)
+          if (error) {
+            console.error('Error deleting user from Supabase Auth:', error)
+            // Continuar con la eliminación de la BD aunque falle en Supabase
+            // El usuario de Supabase quedará huérfano pero no bloqueará la operación
+          } else {
+            console.log(`Usuario eliminado de Supabase Auth: ${existing.email}`)
+          }
+        } catch (error) {
+          console.error('Unexpected error deleting from Supabase Auth:', error)
+          // Continuar con la eliminación de la BD
+        }
+      }
+
+      // Eliminar de la base de datos
       return prisma.user.delete({
         where: { id },
       })
@@ -260,5 +278,56 @@ export class UsersService {
         status: true,
       },
     })
+  }
+
+  /**
+   * Limpiar usuarios huérfanos en Supabase Auth (que existen en Supabase pero no en la BD)
+   * UTILIDAD: Solo para limpiar datos inconsistentes
+   */
+  async cleanOrphanedSupabaseUsers() {
+    try {
+      // Obtener todos los usuarios de la base de datos
+      const dbUsers = await prisma.user.findMany({
+        select: { supabaseUserId: true, email: true }
+      })
+
+      const dbSupabaseIds = new Set(dbUsers.map(u => u.supabaseUserId).filter(Boolean))
+
+      // Obtener usuarios de Supabase Auth (con paginación)
+      const { data: { users: supabaseUsers }, error } = await supabaseAdmin.auth.admin.listUsers()
+
+      if (error) {
+        throw new Error(`Error listando usuarios de Supabase: ${error.message}`)
+      }
+
+      // Encontrar usuarios huérfanos (en Supabase pero no en BD)
+      const orphanedUsers = supabaseUsers?.filter(su => !dbSupabaseIds.has(su.id)) || []
+
+      // Eliminar usuarios huérfanos
+      const deletedUsers = []
+      for (const orphan of orphanedUsers) {
+        try {
+          const { error: deleteError } = await supabaseAdmin.auth.admin.deleteUser(orphan.id)
+          if (deleteError) {
+            console.error(`Error eliminando usuario huérfano ${orphan.email}:`, deleteError)
+          } else {
+            deletedUsers.push({ id: orphan.id, email: orphan.email })
+            console.log(`Usuario huérfano eliminado de Supabase: ${orphan.email}`)
+          }
+        } catch (err) {
+          console.error(`Error inesperado eliminando ${orphan.email}:`, err)
+        }
+      }
+
+      return {
+        totalSupabaseUsers: supabaseUsers?.length || 0,
+        totalDbUsers: dbUsers.length,
+        orphanedFound: orphanedUsers.length,
+        orphanedDeleted: deletedUsers.length,
+        deletedUsers
+      }
+    } catch (error: any) {
+      throw new Error(`Error limpiando usuarios huérfanos: ${error.message}`)
+    }
   }
 }

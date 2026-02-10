@@ -118,4 +118,104 @@ router.get(
   }
 )
 
+// GET /reports/production — ADMIN, CONTABILIDAD
+router.get(
+  '/production',
+  rbacMiddleware(['ADMINISTRADOR', 'CONTABILIDAD']),
+  async (req: Request, res: Response) => {
+    try {
+      const { year, groupBy } = req.query
+
+      if (!year) {
+        return res.status(400).json({
+          success: false,
+          message: 'year es requerido',
+        })
+      }
+
+      const data = await reportsService.getProductionByPeriod(
+        parseInt(year as string),
+        (groupBy as 'month' | 'year') || 'month'
+      )
+
+      return res.status(200).json({
+        success: true,
+        data,
+      })
+    } catch (error: any) {
+      return res.status(500).json({
+        success: false,
+        message: error.message || 'Error al obtener reporte de producción',
+      })
+    }
+  }
+)
+
+// GET /reports/clients-analysis — ADMIN, CONTABILIDAD
+router.get(
+  '/clients-analysis',
+  rbacMiddleware(['ADMINISTRADOR', 'CONTABILIDAD']),
+  async (req: Request, res: Response) => {
+    try {
+      const { startDate, endDate } = req.query
+
+      if (!startDate || !endDate) {
+        return res.status(400).json({
+          success: false,
+          message: 'startDate y endDate son requeridos',
+        })
+      }
+
+      const data = await reportsService.getNewVsRenewedClients(
+        startDate as string,
+        endDate as string
+      )
+
+      return res.status(200).json({
+        success: true,
+        data,
+      })
+    } catch (error: any) {
+      return res.status(500).json({
+        success: false,
+        message: error.message || 'Error al obtener análisis de clientes',
+      })
+    }
+  }
+)
+
+// GET /reports/top-insurers — ADMIN, CONTABILIDAD
+router.get(
+  '/top-insurers',
+  rbacMiddleware(['ADMINISTRADOR', 'CONTABILIDAD']),
+  async (req: Request, res: Response) => {
+    try {
+      const { startDate, endDate, limit } = req.query
+
+      if (!startDate || !endDate) {
+        return res.status(400).json({
+          success: false,
+          message: 'startDate y endDate son requeridos',
+        })
+      }
+
+      const data = await reportsService.getTopInsurers(
+        startDate as string,
+        endDate as string,
+        limit ? parseInt(limit as string) : 10
+      )
+
+      return res.status(200).json({
+        success: true,
+        data,
+      })
+    } catch (error: any) {
+      return res.status(500).json({
+        success: false,
+        message: error.message || 'Error al obtener top aseguradoras',
+      })
+    }
+  }
+)
+
 export default router

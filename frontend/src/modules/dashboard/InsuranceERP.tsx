@@ -34,6 +34,7 @@ export default function InsuranceERP() {
   const { user } = useAuth()
   const [activeModule, setActiveModule] = useState("dashboard")
   const [collapsed, setCollapsed] = useState(false)
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
 
   const userName = user?.user_metadata?.name || user?.email?.split("@")[0] || "Usuario"
   const userRole = user?.user_metadata?.role || "Usuario"
@@ -58,9 +59,22 @@ export default function InsuranceERP() {
 
   return (
     <div className="min-h-screen bg-slate-950 text-white">
-      <Sidebar active={activeModule} setActive={setActiveModule} collapsed={collapsed} setCollapsed={setCollapsed} />
-      <TopBar title={titles[activeModule] || "Dashboard"} collapsed={collapsed} userName={userName} userRole={userRole} />
-      <main className={`pt-24 pb-8 px-6 transition-all duration-300 ${collapsed ? "ml-[68px]" : "ml-[250px]"}`}>
+      <Sidebar
+        active={activeModule}
+        setActive={setActiveModule}
+        collapsed={collapsed}
+        setCollapsed={setCollapsed}
+        mobileMenuOpen={mobileMenuOpen}
+        setMobileMenuOpen={setMobileMenuOpen}
+      />
+      <TopBar
+        title={titles[activeModule] || "Dashboard"}
+        collapsed={collapsed}
+        userName={userName}
+        userRole={userRole}
+        onMenuClick={() => setMobileMenuOpen(true)}
+      />
+      <main className={`pt-24 pb-8 px-4 md:px-6 transition-all duration-300 ${collapsed ? "md:ml-[68px]" : "md:ml-[250px]"}`}>
         {renderModule()}
       </main>
     </div>

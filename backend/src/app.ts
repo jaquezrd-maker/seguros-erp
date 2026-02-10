@@ -19,7 +19,10 @@ import insuranceTypeRoutes from './modules/insurance-types/insuranceTypes.routes
 import notificationRoutes from './modules/notifications/notifications.routes'
 import aiRoutes from './modules/ai/ai.routes'
 import eventRoutes from './modules/events/events.routes'
+import taskRoutes from './modules/tasks/tasks.routes'
 import testRoutes from './routes/test.routes'
+import clientPortalRoutes from './modules/client-portal/client-portal.routes'
+import portalDataRoutes from './modules/client-portal-data/portal-data.routes'
 
 const app = express()
 
@@ -29,6 +32,9 @@ app.use(helmet())
 // CORS configuration - allow Vercel deployments and localhost
 const allowedOrigins = [
   'http://localhost:5173',
+  'http://localhost:5174',
+  'http://localhost:5175',
+  'http://localhost:5176',
   'http://localhost:3000',
 ]
 
@@ -72,6 +78,8 @@ app.get('/api/health', (_req, res) => {
 
 // Routes
 app.use('/api/auth', authRoutes)
+app.use('/api/client-portal', clientPortalRoutes)
+app.use('/api/client-portal-data', portalDataRoutes)
 app.use('/api/clients', clientRoutes)
 app.use('/api/insurers', insurerRoutes)
 app.use('/api/policies', policyRoutes)
@@ -85,6 +93,7 @@ app.use('/api/insurance-types', insuranceTypeRoutes)
 app.use('/api/notifications', notificationRoutes)
 app.use('/api/ai', aiRoutes)
 app.use('/api/events', eventRoutes)
+app.use('/api/tasks', taskRoutes)
 app.use('/api/test', testRoutes)
 
 // Error handler (must be last)

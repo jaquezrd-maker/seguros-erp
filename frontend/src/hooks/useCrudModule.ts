@@ -105,12 +105,13 @@ export default function useCrudModule<T extends { id: number }>({ endpoint, defa
     }
   }
 
-  const deleteItem = async (_param?: any) => {
+  const deleteItem = async (permanent: boolean = false) => {
     if (!deleteTarget) return
     setSaving(true)
     setError('')
     try {
-      const response = await api.delete<ApiResponse<T>>(`${endpoint}/${deleteTarget.id}`)
+      const url = `${endpoint}/${deleteTarget.id}${permanent ? '?permanent=true' : ''}`
+      const response = await api.delete<ApiResponse<T>>(url)
       setDeleteTarget(null)
       setSuccess(response.message || 'Operación exitosa')
       // Auto-clear success message after 5 seconds

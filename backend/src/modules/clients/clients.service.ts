@@ -41,7 +41,27 @@ export const clientsService = {
         skip,
         take: limit,
         orderBy: { createdAt: 'desc' },
-        include: {
+        select: {
+          id: true,
+          type: true,
+          name: true,
+          cedulaRnc: true,
+          phone: true,
+          phoneAlt: true,
+          email: true,
+          address: true,
+          city: true,
+          province: true,
+          contactPerson: true,
+          contactPosition: true,
+          purchasingManager: true,
+          birthDate: true,
+          status: true,
+          notes: true,
+          userId: true, // Include userId for portal status
+          createdBy: true,
+          createdAt: true,
+          updatedAt: true,
           _count: {
             select: {
               policies: true,
@@ -125,8 +145,14 @@ export const clientsService = {
       throw new Error('Ya existe un cliente con esta cedula/RNC')
     }
 
+    // Convert birthDate string to Date if provided
+    const processedData = { ...data }
+    if (processedData.birthDate && typeof processedData.birthDate === 'string') {
+      processedData.birthDate = new Date(processedData.birthDate)
+    }
+
     return prisma.client.create({
-      data,
+      data: processedData,
       include: {
         _count: {
           select: {
@@ -157,9 +183,18 @@ export const clientsService = {
       }
     }
 
+    // Convert birthDate string to Date if provided
+    const processedData = { ...data }
+    if (processedData.birthDate && typeof processedData.birthDate === 'string') {
+      processedData.birthDate = new Date(processedData.birthDate)
+    }
+
+    // Remove non-updatable fields
+    const { id: _, createdAt, updatedAt, _count, balance, ...updateData } = processedData as any
+
     return prisma.client.update({
       where: { id },
-      data,
+      data: updateData,
       include: {
         _count: {
           select: {

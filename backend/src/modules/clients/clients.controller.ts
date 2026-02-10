@@ -6,6 +6,7 @@ import { generateClientStatementPDF } from '../../services/pdf/client.pdf'
 import { sendEmailWithDebug } from '../../utils/emailHelper'
 import { genericNotificationEmail } from '../../utils/emailTemplates'
 import { formatCurrency } from '../../utils/pdf'
+import { lookupRNC } from '../../utils/rncLookup'
 
 export const clientsController = {
   async list(req: Request, res: Response, next: NextFunction) {
@@ -266,6 +267,26 @@ export const clientsController = {
           recipients: emailRecipients,
         },
       })
+    } catch (error) {
+      next(error)
+    }
+  },
+
+  async lookupRNC(req: Request, res: Response, next: NextFunction) {
+    try {
+      const { rnc } = req.params
+
+      if (!rnc) {
+        return res.status(400).json({ success: false, message: 'RNC/Cédula es requerido' })
+      }
+
+      const rncData = await lookupRNC(rnc)
+
+      if (!rncData) {
+        return res.status(404).json({ success: false, message: 'RNC/Cédula no encontrado en la base de datos DGII' })
+      }
+
+      res.json({ success: true, data: rncData })
     } catch (error) {
       next(error)
     }

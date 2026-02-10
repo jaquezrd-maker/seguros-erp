@@ -1,4 +1,5 @@
 import { Building2 } from "lucide-react"
+import { useState } from "react"
 import useCrudModule from "../../hooks/useCrudModule"
 import type { Insurer } from "../../types"
 import StatusBadge from "../../components/ui/StatusBadge"
@@ -8,11 +9,13 @@ import StatCard from "../../components/ui/StatCard"
 import Modal from "../../components/ui/Modal"
 import FormInput from "../../components/ui/FormInput"
 import ConfirmDialog from "../../components/ui/ConfirmDialog"
+import { api } from "../../api/client"
 
 const defaultForm = { name: "", rnc: "", legalName: "", phone: "", email: "", contactPerson: "", address: "" }
 
 export default function InsurersPage() {
   const crud = useCrudModule<Insurer>({ endpoint: "/insurers", defaultForm })
+  const [rncLookupLoading, setRncLookupLoading] = useState(false)
 
   const columns = [
     { key: "name", label: "Aseguradora" },
@@ -23,6 +26,54 @@ export default function InsurersPage() {
     { key: "status", label: "Estado", render: (v: string) => <StatusBadge status={v} /> },
     { key: "_count", label: "Pólizas", render: (_: any, row: Insurer) => row._count?.policies ?? 0 },
   ]
+
+  const handleRNCLookup = async () => {
+    const rnc = crud.form.rnc?.trim()
+    if (!rnc || rnc.length < 9 || crud.modal !== "create") return
+
+    setRncLookupLoading(true)
+    try {
+      const response = await api.get<{ success: boolean; data: any }>(`/insurers/rnc/${rnc}`)
+      if (response.success && response.data) {
+        const rncData = response.data
+
+        // Auto-fill form with RNC data
+        crud.updateField("name", rncData.name || "")
+        crud.updateField("legalName", rncData.name || "")
+
+        console.log("RNC encontrado:", rncData)
+      }
+    } catch (error: any) {
+      // Silently fail if RNC not found - user can still fill manually
+      console.log("RNC no encontrado en DGII, continuar manualmente")
+    } finally {
+      setRncLookupLoading(false)
+    }
+  }
+
+  const handleNameLookup = async () => {
+    const name = crud.form.name?.trim()
+    if (!name || name.length < 3 || crud.modal !== "create" || crud.form.rnc) return // Skip if RNC already filled
+
+    setRncLookupLoading(true)
+    try {
+      const response = await api.get<{ success: boolean; data: any[] }>(`/insurers/search?name=${encodeURIComponent(name)}`)
+      if (response.success && response.data && response.data.length > 0) {
+        const firstMatch = response.data[0]
+
+        // Auto-fill RNC and legal name with first match
+        crud.updateField("rnc", firstMatch.rnc || "")
+        crud.updateField("legalName", firstMatch.name || "")
+
+        console.log(`Encontrados ${response.data.length} resultados, usando primero:`, firstMatch)
+      }
+    } catch (error: any) {
+      // Silently fail if not found - user can still fill manually
+      console.log("No se encontraron empresas con ese nombre en DGII")
+    } finally {
+      setRncLookupLoading(false)
+    }
+  }
 
   const handleSave = async () => {
     if (crud.modal === "create") await crud.createItem()
@@ -65,8 +116,10 @@ export default function InsurersPage() {
       <Modal isOpen={crud.modal === "create" || crud.modal === "edit"} onClose={crud.closeModal}
         title={crud.modal === "create" ? "Nueva Aseguradora" : "Editar Aseguradora"} size="lg">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <FormInput label="Nombre" value={crud.form.name} onChange={v => crud.updateField("name", v)} required />
-          <FormInput label="RNC" value={crud.form.rnc} onChange={v => crud.updateField("rnc", v)} required />
+          <FormInput label="RNC" value={crud.form.rnc} onChange={v => crud.updateField("rnc", v)} onBlur={handleRNCLookup} required
+            placeholder={rncLookupLoading ? "Buscando en DGII..." : "Ingrese RNC"} disabled={rncLookupLoading} />
+          <FormInput label="Nombre" value={crud.form.name} onChange={v => crud.updateField("name", v)} onBlur={handleNameLookup} required
+            placeholder={rncLookupLoading ? "Buscando en DGII..." : "Ingrese nombre de la empresa"} disabled={rncLookupLoading} />
           <FormInput label="Razón Social" value={crud.form.legalName} onChange={v => crud.updateField("legalName", v)} />
           <FormInput label="Teléfono" value={crud.form.phone} onChange={v => crud.updateField("phone", v)} />
           <FormInput label="Email" type="email" value={crud.form.email} onChange={v => crud.updateField("email", v)} />

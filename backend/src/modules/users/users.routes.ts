@@ -32,4 +32,7 @@ router.patch('/:id/status', adminOnly, validate(updateStatusSchema), controller.
 // DELETE /users/:id — ADMIN
 router.delete('/:id', adminOnly, controller.delete)
 
+// POST /users/cleanup/orphaned — ADMIN (utilidad para limpiar usuarios huérfanos de Supabase)
+router.post('/cleanup/orphaned', adminOnly, controller.cleanOrphaned)
+
 export default router

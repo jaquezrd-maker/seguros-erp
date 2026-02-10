@@ -1,13 +1,25 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react'
 import { supabase } from '../lib/supabase'
 import type { User, Session } from '@supabase/supabase-js'
+import { api } from '../api/client'
+
+interface DBUser {
+  id: number
+  name: string
+  email: string
+  role: string
+  status: string
+  forcePasswordChange: boolean
+}
 
 interface AuthState {
   user: User | null
   session: Session | null
+  dbUser: DBUser | null
   loading: boolean
   signIn: (email: string, password: string) => Promise<void>
   signOut: () => Promise<void>
+  refreshDbUser: () => Promise<void>
 }
 
 const AuthContext = createContext<AuthState | undefined>(undefined)
@@ -15,18 +27,83 @@ const AuthContext = createContext<AuthState | undefined>(undefined)
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [session, setSession] = useState<Session | null>(null)
+  const [dbUser, setDbUser] = useState<DBUser | null>(null)
   const [loading, setLoading] = useState(true)
 
+  // Timeout de seguridad: si después de 10 segundos sigue loading, forzar a false
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    const timeout = setTimeout(() => {
+      if (loading) {
+        console.warn('[AUTH] Loading timeout alcanzado, forzando a false')
+        setLoading(false)
+      }
+    }, 10000) // 10 segundos
+
+    return () => clearTimeout(timeout)
+  }, [loading])
+
+  const fetchDbUser = async () => {
+    try {
+      const response = await api.get<{ success: boolean; data: DBUser }>('/auth/me')
+      setDbUser(response.data)
+    } catch (error: any) {
+      console.error('Error fetching database user:', error)
+      setDbUser(null)
+
+      // Si el error es 401 (token inválido/expirado), limpiar la sesión de Supabase
+      if (error?.status === 401 || error?.response?.status === 401) {
+        console.log('[AUTH] Token inválido detectado, limpiando sesión...')
+        await supabase.auth.signOut()
+        setUser(null)
+        setSession(null)
+      }
+    }
+  }
+
+  useEffect(() => {
+    // Obtener sesión inicial
+    supabase.auth.getSession().then(async ({ data: { session }, error }) => {
+      // Si hay error al obtener la sesión, limpiar todo
+      if (error) {
+        console.error('[AUTH] Error getting session:', error)
+        await supabase.auth.signOut()
+        setSession(null)
+        setUser(null)
+        setDbUser(null)
+        setLoading(false)
+        return
+      }
+
       setSession(session)
       setUser(session?.user ?? null)
+
+      if (session?.user) {
+        await fetchDbUser()
+      }
+
+      setLoading(false)
+    }).catch(async (error) => {
+      // Capturar cualquier error no manejado
+      console.error('[AUTH] Unexpected error during initialization:', error)
+      await supabase.auth.signOut()
+      setSession(null)
+      setUser(null)
+      setDbUser(null)
       setLoading(false)
     })
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    // Escuchar cambios de autenticación
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
+      console.log('[AUTH] Auth state changed:', _event)
+
       setSession(session)
       setUser(session?.user ?? null)
+
+      if (session?.user) {
+        await fetchDbUser()
+      } else {
+        setDbUser(null)
+      }
     })
 
     return () => subscription.unsubscribe()
@@ -35,15 +112,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signIn = async (email: string, password: string) => {
     const { error } = await supabase.auth.signInWithPassword({ email, password })
     if (error) throw error
+    await fetchDbUser()
   }
 
   const signOut = async () => {
     const { error } = await supabase.auth.signOut()
     if (error) throw error
+    setDbUser(null)
+  }
+
+  const refreshDbUser = async () => {
+    await fetchDbUser()
   }
 
   return (
-    <AuthContext.Provider value={{ user, session, loading, signIn, signOut }}>
+    <AuthContext.Provider value={{ user, session, dbUser, loading, signIn, signOut, refreshDbUser }}>
       {children}
     </AuthContext.Provider>
   )

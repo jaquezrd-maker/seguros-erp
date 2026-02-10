@@ -61,9 +61,9 @@ export default function DataTable<T extends Record<string, any>>({ columns, data
                 {actions && (
                   <td className="px-4 py-3 text-right">
                     <div className="flex items-center justify-end gap-1">
-                      {onView && <button onClick={() => onView(row)} className="p-1.5 rounded-lg hover:bg-slate-700 text-slate-400 hover:text-teal-400 transition-colors"><Eye size={15} /></button>}
-                      {onEdit && <button onClick={() => onEdit(row)} className="p-1.5 rounded-lg hover:bg-slate-700 text-slate-400 hover:text-indigo-400 transition-colors"><Edit size={15} /></button>}
-                      {onDelete && <button onClick={() => onDelete(row)} className="p-1.5 rounded-lg hover:bg-slate-700 text-slate-400 hover:text-red-400 transition-colors"><Trash2 size={15} /></button>}
+                      {onView && <button onClick={() => onView(row)} className="p-2 md:p-1.5 rounded-lg hover:bg-slate-700 text-slate-400 hover:text-teal-400 transition-colors"><Eye size={15} /></button>}
+                      {onEdit && <button onClick={() => onEdit(row)} className="p-2 md:p-1.5 rounded-lg hover:bg-slate-700 text-slate-400 hover:text-indigo-400 transition-colors"><Edit size={15} /></button>}
+                      {onDelete && <button onClick={() => onDelete(row)} className="p-2 md:p-1.5 rounded-lg hover:bg-slate-700 text-slate-400 hover:text-red-400 transition-colors"><Trash2 size={15} /></button>}
                     </div>
                   </td>
                 )}

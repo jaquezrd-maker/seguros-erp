@@ -38,6 +38,13 @@ router.post(
   clientsController.sendEmail,
 )
 
+// GET /rnc/:rnc - Lookup RNC in DGII database (must be before /:id)
+router.get(
+  '/rnc/:rnc',
+  rbacMiddleware(['ADMINISTRADOR', 'EJECUTIVO']),
+  clientsController.lookupRNC,
+)
+
 // GET /:id - Get client by ID
 router.get(
   '/:id',

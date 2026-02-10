@@ -74,6 +74,17 @@ export default function Calendar({ onEventClick }: CalendarProps) {
     fetchEvents(currentDate)
   }, [currentDate, fetchEvents])
 
+  // Listen for calendar refresh events
+  useEffect(() => {
+    const handleRefresh = () => {
+      console.log('Calendar refresh event received')
+      fetchEvents(currentDate)
+    }
+
+    window.addEventListener('refreshCalendar', handleRefresh)
+    return () => window.removeEventListener('refreshCalendar', handleRefresh)
+  }, [currentDate, fetchEvents])
+
   const handleNavigate = (date: Date) => {
     setCurrentDate(date)
   }
@@ -173,6 +184,7 @@ export default function Calendar({ onEventClick }: CalendarProps) {
         startAccessor="start"
         endAccessor="end"
         style={{ height: 600 }}
+        date={currentDate}
         onNavigate={handleNavigate}
         onSelectEvent={handleSelectEvent}
         onSelectSlot={handleSelectSlot}

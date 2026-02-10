@@ -2,6 +2,11 @@ import { useState } from 'react'
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { useAuth } from './context/AuthContext'
 import InsuranceERP from './modules/dashboard/InsuranceERP'
+import ClientLogin from './modules/client-portal/ClientLogin'
+import ClientRegistration from './modules/client-portal/ClientRegistration'
+import ClientForcePasswordChange from './modules/client-portal/ClientForcePasswordChange'
+import ClientPortalContainer from './modules/client-portal/ClientPortalContainer'
+import ClientProtectedRoute from './components/ClientProtectedRoute'
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth()
@@ -85,7 +90,32 @@ function LoginPage() {
 export default function App() {
   return (
     <Routes>
+      {/* Internal ERP login */}
       <Route path="/login" element={<LoginPage />} />
+
+      {/* Client portal public routes */}
+      <Route path="/client/login" element={<ClientLogin />} />
+      <Route path="/client/register/:token" element={<ClientRegistration />} />
+
+      {/* Client portal protected routes */}
+      <Route
+        path="/client/change-password"
+        element={
+          <ClientProtectedRoute>
+            <ClientForcePasswordChange />
+          </ClientProtectedRoute>
+        }
+      />
+      <Route
+        path="/client/*"
+        element={
+          <ClientProtectedRoute>
+            <ClientPortalContainer />
+          </ClientProtectedRoute>
+        }
+      />
+
+      {/* Internal ERP routes */}
       <Route
         path="/*"
         element={

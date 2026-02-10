@@ -217,3 +217,17 @@ export interface ApiResponse<T> {
   data: T
   message?: string
 }
+
+export type TaskPriority = "BAJA" | "MEDIA" | "ALTA" | "URGENTE"
+
+export interface Task {
+  id: number
+  title: string
+  description?: string
+  completed: boolean
+  priority: TaskPriority
+  dueDate?: string
+  userId: number
+  createdAt: string
+  updatedAt: string
+}

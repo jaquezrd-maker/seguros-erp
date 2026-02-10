@@ -127,4 +127,21 @@ export class UsersController {
       })
     }
   }
+
+  async cleanOrphaned(req: Request, res: Response) {
+    try {
+      const result = await usersService.cleanOrphanedSupabaseUsers()
+
+      return res.status(200).json({
+        success: true,
+        message: `Limpieza completada: ${result.orphanedDeleted} de ${result.orphanedFound} usuarios huérfanos eliminados`,
+        data: result,
+      })
+    } catch (error: any) {
+      return res.status(500).json({
+        success: false,
+        message: error.message || 'Error limpiando usuarios huérfanos',
+      })
+    }
+  }
 }

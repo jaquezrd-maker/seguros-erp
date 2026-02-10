@@ -5,6 +5,7 @@ import { fmt, fmtDate } from "../../utils/format"
 import StatCard from "../../components/ui/StatCard"
 import StatusBadge from "../../components/ui/StatusBadge"
 import Calendar from "../../components/calendar/Calendar"
+import TodoList from "../../components/todo/TodoList"
 
 interface DashboardData {
   totalClients: number
@@ -78,10 +79,16 @@ export default function DashboardPage() {
         <StatCard title="Siniestros Pendientes" value={data?.pendingClaims ?? 0} subtitle={`${data?.totalClaims ?? 0} total`} icon={AlertTriangle} color="red" />
       </div>
 
-      {/* Calendar Section */}
-      <div className="mb-6">
-        <h2 className="text-lg font-semibold text-white mb-4">Calendario de Eventos y Recordatorios</h2>
-        <Calendar />
+      {/* Calendar and Todo List Section */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+        <div className="lg:col-span-2">
+          <h2 className="text-lg font-semibold text-white mb-4">Calendario de Eventos y Recordatorios</h2>
+          <Calendar />
+        </div>
+        <div>
+          <h2 className="text-lg font-semibold text-white mb-4">Tareas Pendientes</h2>
+          <TodoList />
+        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
