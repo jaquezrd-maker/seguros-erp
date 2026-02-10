@@ -1,14 +1,9 @@
-import nodemailer from 'nodemailer'
+import sgMail from '@sendgrid/mail'
 
-export const transporter = nodemailer.createTransport({
-  host: process.env.SMTP_HOST,
-  port: parseInt(process.env.SMTP_PORT || '587'),
-  secure: parseInt(process.env.SMTP_PORT || '587') === 465, // Use SSL for port 465
-  auth: {
-    user: process.env.SMTP_USER,
-    pass: process.env.SMTP_PASS,
-  },
-})
+// Initialize SendGrid with API key
+if (process.env.SMTP_PASS) {
+  sgMail.setApiKey(process.env.SMTP_PASS)
+}
 
 export const EMAIL_FROM = process.env.EMAIL_FROM || 'noreply@seguropro.com'
 
@@ -25,18 +20,40 @@ export async function sendEmail(options: {
   attachments?: EmailAttachment[]
 }) {
   if (!process.env.SMTP_PASS) {
-    console.log('[Email] SMTP not configured, skipping email:', options.subject)
+    console.log('[Email] SendGrid not configured, skipping email:', options.subject)
     return
   }
 
   // Convert single recipient to array for consistency
-  const recipients = Array.isArray(options.to) ? options.to.join(', ') : options.to
+  const recipients = Array.isArray(options.to) ? options.to : [options.to]
 
-  return transporter.sendMail({
-    from: EMAIL_FROM,
+  // Convert attachments to SendGrid format
+  const sendGridAttachments = options.attachments?.map((att) => ({
+    filename: att.filename,
+    content: Buffer.isBuffer(att.content)
+      ? att.content.toString('base64')
+      : Buffer.from(att.content).toString('base64'),
+    type: att.contentType || 'application/octet-stream',
+    disposition: 'attachment',
+  }))
+
+  const msg = {
     to: recipients,
+    from: EMAIL_FROM,
     subject: options.subject,
     html: options.html,
-    attachments: options.attachments,
-  })
+    attachments: sendGridAttachments,
+  }
+
+  try {
+    const response = await sgMail.send(msg)
+    console.log('[Email] Sent successfully:', options.subject, 'to', recipients.join(', '))
+    return response
+  } catch (error: any) {
+    console.error('[Email] Failed to send:', error.message)
+    if (error.response) {
+      console.error('[Email] SendGrid error:', error.response.body)
+    }
+    throw error
+  }
 }
