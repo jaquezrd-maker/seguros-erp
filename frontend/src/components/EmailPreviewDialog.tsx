@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react"
 import Modal from "./ui/Modal"
-import api from "../api/client"
+import { api } from "../api/client"
 
 interface EmailPreviewDialogProps {
   isOpen: boolean
@@ -125,7 +125,7 @@ export default function EmailPreviewDialog({
   }
 
   return (
-    <Modal isOpen={isOpen} onClose={handleClose} title={title} size="large">
+    <Modal isOpen={isOpen} onClose={handleClose} title={title} size="xl">
       {error && (
         <div className="mb-4 p-3 bg-red-500/10 border border-red-500/30 rounded-lg text-red-400 text-sm">
           {error}
