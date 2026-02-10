@@ -11,7 +11,7 @@ import StatCard from "../../components/ui/StatCard"
 import Modal from "../../components/ui/Modal"
 import FormInput from "../../components/ui/FormInput"
 import ConfirmDialog from "../../components/ui/ConfirmDialog"
-import EmailDialog from "../../components/ui/EmailDialog"
+import EmailPreviewDialog from "../../components/EmailPreviewDialog"
 
 const defaultForm = {
   policyId: "", clientId: "", amount: "", paymentMethod: "TRANSFERENCIA",
@@ -167,14 +167,6 @@ export default function PaymentsPage() {
   const handleOpenEmailDialog = (id: number) => {
     setCurrentPaymentForEmail(id)
     setEmailDialogOpen(true)
-  }
-
-  const handleSendEmail = async (recipients: string[], includeAttachment: boolean) => {
-    if (!currentPaymentForEmail) return
-    await api.post(`/payments/${currentPaymentForEmail}/email`, { recipients, includeAttachment })
-    crud.setSuccess('Email enviado exitosamente')
-    setEmailDialogOpen(false)
-    setCurrentPaymentForEmail(null)
   }
 
   const handleCompletePayment = async (payment: Payment) => {
@@ -405,19 +397,15 @@ export default function PaymentsPage() {
         loading={crud.saving}
       />
 
-      <EmailDialog
+      <EmailPreviewDialog
         isOpen={emailDialogOpen}
         onClose={() => {
           setEmailDialogOpen(false)
           setCurrentPaymentForEmail(null)
         }}
-        onSend={handleSendEmail}
-        recipientOptions={[
-          { value: "client", label: "Cliente", description: "Enviar recibo al email del cliente" },
-          { value: "internal", label: "Interno", description: "Enviar a equipo interno" },
-        ]}
-        title="Enviar Recibo de Pago por Email"
-        attachmentLabel="Adjuntar recibo (PDF)"
+        previewEndpoint={`/payments/${currentPaymentForEmail}/email/preview`}
+        sendEndpoint={`/payments/${currentPaymentForEmail}/email`}
+        title="Preview y Envío de Email - Recibo de Pago"
       />
     </div>
   )

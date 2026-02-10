@@ -8,7 +8,7 @@ import SearchBar from "../../components/ui/SearchBar"
 import StatCard from "../../components/ui/StatCard"
 import Modal from "../../components/ui/Modal"
 import ConfirmDialog from "../../components/ui/ConfirmDialog"
-import EmailDialog from "../../components/ui/EmailDialog"
+import EmailPreviewDialog from "../../components/EmailPreviewDialog"
 import { useState, useEffect, useRef } from "react"
 import { api, getAuthHeaders } from "../../api/client"
 
@@ -48,14 +48,6 @@ export default function RenewalsPage() {
   const handleOpenEmailDialog = (id: number) => {
     setCurrentRenewalForEmail(id)
     setEmailDialogOpen(true)
-  }
-
-  const handleSendEmail = async (recipients: string[], includeAttachment: boolean) => {
-    if (!currentRenewalForEmail) return
-    await api.post(`/renewals/${currentRenewalForEmail}/email`, { recipients, includeAttachment })
-    crud.setSuccess('Email enviado exitosamente')
-    setEmailDialogOpen(false)
-    setCurrentRenewalForEmail(null)
   }
 
   // Auto-generate renewals on mount ONLY ONCE
@@ -261,20 +253,15 @@ export default function RenewalsPage() {
         message={`¿Está seguro de eliminar la renovación de la póliza "${crud.deleteTarget?.policy?.policyNumber}"?`}
         onConfirm={crud.deleteItem} onCancel={crud.cancelDelete} loading={crud.saving} />
 
-      <EmailDialog
+      <EmailPreviewDialog
         isOpen={emailDialogOpen}
         onClose={() => {
           setEmailDialogOpen(false)
           setCurrentRenewalForEmail(null)
         }}
-        onSend={handleSendEmail}
-        recipientOptions={[
-          { value: "client", label: "Cliente", description: "Enviar aviso de renovación al cliente" },
-          { value: "insurer", label: "Aseguradora", description: "Enviar a la aseguradora" },
-          { value: "internal", label: "Interno", description: "Enviar a equipo interno" },
-        ]}
-        title="Enviar Aviso de Renovación por Email"
-        attachmentLabel="Adjuntar aviso (PDF)"
+        previewEndpoint={`/renewals/${currentRenewalForEmail}/email/preview`}
+        sendEndpoint={`/renewals/${currentRenewalForEmail}/email`}
+        title="Preview y Envío de Email - Renovación"
       />
     </div>
   )
