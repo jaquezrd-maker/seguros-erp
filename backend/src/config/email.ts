@@ -13,6 +13,8 @@ export const transporter = nodemailer.createTransport({
     rejectUnauthorized: false,
     // Force TLS version
     minVersion: 'TLSv1',
+    // Use this servername for TLS handshake (useful when using IP address)
+    servername: 'mail.dopek.net',
   },
   // Force authentication even if server doesn't advertise it
   requireTLS: true,
