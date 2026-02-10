@@ -8,19 +8,6 @@ export const transporter = nodemailer.createTransport({
     user: process.env.SMTP_USER,
     pass: process.env.SMTP_PASS,
   },
-  tls: {
-    // Don't fail on invalid certificates (e.g., hostname mismatch)
-    rejectUnauthorized: false,
-    // Force TLS version
-    minVersion: 'TLSv1',
-    // Use this servername for TLS handshake (useful when using IP address)
-    servername: 'mail.dopek.net',
-  },
-  // Force authentication even if server doesn't advertise it
-  requireTLS: true,
-  // Debug mode (remove in production)
-  debug: process.env.NODE_ENV === 'development',
-  logger: process.env.NODE_ENV === 'development',
 })
 
 export const EMAIL_FROM = process.env.EMAIL_FROM || 'noreply@seguropro.com'
