@@ -45,6 +45,13 @@ router.post(
 // GET /payments/:id/pdf — Generate payment receipt PDF (must be before /:id)
 router.get('/:id/pdf', controller.generatePDF)
 
+// GET /payments/:id/email/preview — Preview payment email (must be before /:id)
+router.get(
+  '/:id/email/preview',
+  rbacMiddleware(['ADMINISTRADOR', 'EJECUTIVO', 'CONTABILIDAD']),
+  controller.previewEmail
+)
+
 // POST /payments/:id/email — Send payment email (must be before /:id)
 router.post(
   '/:id/email',
