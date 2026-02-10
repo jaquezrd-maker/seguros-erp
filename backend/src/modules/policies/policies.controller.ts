@@ -150,20 +150,33 @@ export const policiesController = {
         emailRecipients.push(internalEmail)
       }
 
-      // Calculate days until expiration
+      // Calculate days until expiration (same logic as sendEmail)
       const today = new Date()
       const endDate = new Date(policy.endDate)
-      const daysLeft = Math.ceil((endDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24))
+      const daysUntilExpiry = Math.ceil((endDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24))
 
-      // Generate email content (same as sendEmail but don't send)
-      const emailTemplate = policyExpirationReminderEmail({
-        clientName: policy.client?.name || 'Cliente',
-        policyNumber: policy.policyNumber,
-        insuranceType: policy.insuranceType?.name || '',
-        endDate: formatDate(policy.endDate),
-        daysLeft,
-        premium: Number(policy.premium),
-      })
+      // Generate email content based on policy status
+      let emailTemplate
+      if (policy.status === 'VENCIDA' || daysUntilExpiry < 0) {
+        emailTemplate = policyExpiredEmail({
+          clientName: policy.client?.name || 'Cliente',
+          policyNumber: policy.policyNumber,
+          endDate: formatDate(policy.endDate),
+          insurerName: policy.insurer?.name || '',
+          insuranceType: policy.insuranceType?.name || '',
+          premium: Number(policy.premium),
+        })
+      } else {
+        emailTemplate = policyExpiringSoonEmail({
+          clientName: policy.client?.name || 'Cliente',
+          policyNumber: policy.policyNumber,
+          endDate: formatDate(policy.endDate),
+          daysLeft: Math.max(0, daysUntilExpiry),
+          insurerName: policy.insurer?.name || '',
+          insuranceType: policy.insuranceType?.name || '',
+          premium: Number(policy.premium),
+        })
+      }
 
       // Return preview data
       res.json({
