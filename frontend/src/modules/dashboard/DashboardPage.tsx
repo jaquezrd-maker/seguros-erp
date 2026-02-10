@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react"
-import { Users, Shield, AlertTriangle, DollarSign, TrendingUp } from "lucide-react"
+import { Users, Shield, AlertTriangle } from "lucide-react"
 import { api } from "../../api/client"
 import { fmt, fmtDate } from "../../utils/format"
 import StatCard from "../../components/ui/StatCard"
@@ -72,10 +72,9 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         <StatCard title="Clientes" value={data?.totalClients ?? 0} icon={Users} color="teal" />
         <StatCard title="Pólizas Activas" value={data?.activePolicies ?? 0} subtitle={`${data?.totalPolicies ?? 0} total`} icon={Shield} color="indigo" />
-        <StatCard title="Prima Total" value={fmt(data?.totalPremium ?? 0)} icon={TrendingUp} color="emerald" />
         <StatCard title="Siniestros Pendientes" value={data?.pendingClaims ?? 0} subtitle={`${data?.totalClaims ?? 0} total`} icon={AlertTriangle} color="red" />
       </div>
 
@@ -163,8 +162,7 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <StatCard title="Comisiones Generadas" value={fmt(data?.totalCommissions ?? 0)} icon={DollarSign} color="purple" />
+      <div className="grid grid-cols-1 gap-4">
         <StatCard title="Renovaciones Pendientes" value={data?.pendingRenewals ?? 0} icon={Shield} color="amber" />
       </div>
     </div>
