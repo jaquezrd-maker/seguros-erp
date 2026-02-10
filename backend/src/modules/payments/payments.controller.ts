@@ -260,9 +260,11 @@ export class PaymentsController {
         message: `Email enviado a ${emailRecipients.length} destinatario(s)`,
       })
     } catch (error: any) {
+      console.error('[Payment Email] Error:', error)
       return res.status(500).json({
         success: false,
         message: error.message || 'Error al enviar email',
+        details: process.env.NODE_ENV === 'development' ? error.stack : undefined,
       })
     }
   }
