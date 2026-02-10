@@ -11,7 +11,7 @@ import StatCard from "../../components/ui/StatCard"
 import Modal from "../../components/ui/Modal"
 import FormInput from "../../components/ui/FormInput"
 import ConfirmDialog from "../../components/ui/ConfirmDialog"
-import EmailDialog from "../../components/ui/EmailDialog"
+import EmailPreviewDialog from "../../components/EmailPreviewDialog"
 import PaymentPlanConfig from "./PaymentPlanConfig"
 import BeneficiaryForm from "./BeneficiaryForm"
 
@@ -216,14 +216,6 @@ export default function PoliciesPage() {
   const handleOpenEmailDialog = (id: number) => {
     setCurrentPolicyForEmail(id)
     setEmailDialogOpen(true)
-  }
-
-  const handleSendEmail = async (recipients: string[], includeAttachment: boolean) => {
-    if (!currentPolicyForEmail) return
-    await api.post(`/policies/${currentPolicyForEmail}/email`, { recipients, includeAttachment })
-    crud.setSuccess('Email enviado exitosamente')
-    setEmailDialogOpen(false)
-    setCurrentPolicyForEmail(null)
   }
 
   const handleViewPolicy = async (policy: Policy) => {
@@ -591,20 +583,15 @@ export default function PoliciesPage() {
         loading={crud.saving}
       />
 
-      <EmailDialog
+      <EmailPreviewDialog
         isOpen={emailDialogOpen}
         onClose={() => {
           setEmailDialogOpen(false)
           setCurrentPolicyForEmail(null)
         }}
-        onSend={handleSendEmail}
-        recipientOptions={[
-          { value: "client", label: "Cliente", description: "Enviar al email del cliente" },
-          { value: "insurer", label: "Aseguradora", description: "Enviar a la aseguradora" },
-          { value: "internal", label: "Interno", description: "Enviar a equipo interno" },
-        ]}
-        title="Enviar Póliza por Email"
-        attachmentLabel="Adjuntar documento de póliza (PDF)"
+        previewEndpoint={`/policies/${currentPolicyForEmail}/email/preview`}
+        sendEndpoint={`/policies/${currentPolicyForEmail}/email`}
+        title="Preview y Envío de Email - Póliza"
       />
     </div>
   )
