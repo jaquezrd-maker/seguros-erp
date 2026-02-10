@@ -95,6 +95,10 @@ export default function ClientDetailModal({ clientId, onClose }: ClientDetailMod
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
             <div><span className="text-slate-400">Teléfono:</span> <span className="text-white ml-2">{client.phone || "—"}</span></div>
             <div><span className="text-slate-400">Email:</span> <span className="text-white ml-2">{client.email || "—"}</span></div>
+            <div><span className="text-slate-400">Persona de Contacto:</span> <span className="text-white ml-2">{(client as any).contactPerson || "—"}</span></div>
+            <div><span className="text-slate-400">Cargo/Puesto:</span> <span className="text-white ml-2">{(client as any).contactPosition || "—"}</span></div>
+            <div><span className="text-slate-400">Encargado de Compras:</span> <span className="text-white ml-2">{(client as any).purchasingManager || "—"}</span></div>
+            <div><span className="text-slate-400">Fecha de Cumpleaños:</span> <span className="text-white ml-2">{(client as any).birthDate ? fmtDate((client as any).birthDate) : "—"}</span></div>
             <div><span className="text-slate-400">Ciudad:</span> <span className="text-white ml-2">{client.city || "—"}</span></div>
             <div><span className="text-slate-400">Provincia:</span> <span className="text-white ml-2">{client.province || "—"}</span></div>
             <div className="md:col-span-2"><span className="text-slate-400">Dirección:</span> <span className="text-white ml-2">{client.address || "—"}</span></div>

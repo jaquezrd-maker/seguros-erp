@@ -123,11 +123,15 @@ model Client {
   phone     String?      @db.VarChar(20)
   phoneAlt  String?      @map("phone_alt") @db.VarChar(20)
   email     String?      @db.VarChar(150)
-  address   String?      @db.Text
-  city      String?      @db.VarChar(100)
-  province  String?      @db.VarChar(100)
-  status    ClientStatus @default(ACTIVO)
-  notes     String?      @db.Text
+  address           String?      @db.Text
+  city              String?      @db.VarChar(100)
+  province          String?      @db.VarChar(100)
+  contactPerson     String?      @map("contact_person") @db.VarChar(150)
+  contactPosition   String?      @map("contact_position") @db.VarChar(100)
+  purchasingManager String?      @map("purchasing_manager") @db.VarChar(150)
+  birthDate         DateTime?    @map("birth_date") @db.Date
+  status            ClientStatus @default(ACTIVO)
+  notes             String?      @db.Text
   createdBy Int?         @map("created_by")
   createdAt DateTime     @default(now()) @map("created_at")
   updatedAt DateTime     @updatedAt @map("updated_at")

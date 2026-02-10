@@ -12,7 +12,10 @@ import FormInput from "../../components/ui/FormInput"
 import ConfirmDialog from "../../components/ui/ConfirmDialog"
 import ClientDetailModal from "./ClientDetailModal"
 
-const defaultForm = { type: "FISICA", name: "", cedulaRnc: "", phone: "", email: "", address: "", city: "", province: "", notes: "" }
+const defaultForm = {
+  type: "FISICA", name: "", cedulaRnc: "", phone: "", email: "", address: "", city: "", province: "",
+  contactPerson: "", contactPosition: "", purchasingManager: "", birthDate: "", notes: ""
+}
 
 export default function ClientsPage() {
   const crud = useCrudModule<Client>({ endpoint: "/clients", defaultForm })
@@ -74,6 +77,10 @@ export default function ClientsPage() {
           <FormInput label="Dirección" value={crud.form.address} onChange={v => crud.updateField("address", v)} />
           <FormInput label="Ciudad" value={crud.form.city} onChange={v => crud.updateField("city", v)} />
           <FormInput label="Provincia" value={crud.form.province} onChange={v => crud.updateField("province", v)} />
+          <FormInput label="Persona de Contacto" value={crud.form.contactPerson} onChange={v => crud.updateField("contactPerson", v)} />
+          <FormInput label="Cargo/Puesto" value={crud.form.contactPosition} onChange={v => crud.updateField("contactPosition", v)} />
+          <FormInput label="Encargado de Compras" value={crud.form.purchasingManager} onChange={v => crud.updateField("purchasingManager", v)} />
+          <FormInput label="Fecha de Cumpleaños" type="date" value={crud.form.birthDate} onChange={v => crud.updateField("birthDate", v)} />
           <div className="md:col-span-2">
             <FormInput label="Notas" type="textarea" value={crud.form.notes} onChange={v => crud.updateField("notes", v)} />
           </div>
