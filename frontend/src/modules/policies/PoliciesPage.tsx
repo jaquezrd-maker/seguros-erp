@@ -300,12 +300,40 @@ export default function PoliciesPage() {
       <DataTable columns={columns} data={crud.items} loading={crud.loading}
         onView={handleViewPolicy} onEdit={handleEdit} onDelete={crud.askDelete}
         getRowClassName={(policy: Policy) => {
+          const now = new Date()
+          const endDate = new Date(policy.endDate)
+          const daysUntilExpiry = Math.ceil((endDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
+
+          // Cancelled policies - muted gray
+          if (policy.status === 'CANCELADA') {
+            return "bg-slate-700/20 hover:bg-slate-700/30 border-l-4 border-slate-500/50 opacity-60"
+          }
+
+          // Overdue payments - highest priority (red)
           if (policy.hasOverduePayments) {
             return "bg-red-500/10 hover:bg-red-500/20 border-l-4 border-red-500/50"
           }
-          if (policy.hasPendingPayments) {
+
+          // Expired policies (past end date) - red
+          if (daysUntilExpiry < 0) {
+            return "bg-red-600/15 hover:bg-red-600/25 border-l-4 border-red-600/60"
+          }
+
+          // Expiring soon (within 30 days) - amber/yellow
+          if (daysUntilExpiry <= 30 && daysUntilExpiry >= 0) {
             return "bg-amber-500/10 hover:bg-amber-500/20 border-l-4 border-amber-500/50"
           }
+
+          // Pending payments - amber (lower priority than expiring)
+          if (policy.hasPendingPayments) {
+            return "bg-amber-500/5 hover:bg-amber-500/15 border-l-4 border-amber-500/30"
+          }
+
+          // Active and healthy policies - subtle green
+          if (policy.status === 'VIGENTE' && daysUntilExpiry > 30) {
+            return "bg-emerald-500/5 hover:bg-emerald-500/10 border-l-4 border-emerald-500/30"
+          }
+
           return ""
         }} />
 
