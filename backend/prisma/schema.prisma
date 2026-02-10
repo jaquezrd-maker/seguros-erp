@@ -103,6 +103,16 @@ enum RenewalStatus {
   VENCIDA
 }
 
+enum EventType {
+  REMINDER
+  MEETING
+  FOLLOW_UP
+  POLICY_EXPIRATION
+  PAYMENT_DUE
+  RENEWAL_DUE
+  OTHER
+}
+
 // ===================== MODELS =====================
 
 model Client {
@@ -126,6 +136,7 @@ model Client {
   policies Policy[]
   payments Payment[]
   contacts ClientContact[]
+  events   Event[]
 
   @@index([status])
   @@index([cedulaRnc])
@@ -219,6 +230,7 @@ model Policy {
   commissions   Commission[]
   renewals      Renewal[]
   notifications Notification[]
+  events        Event[]
 
   @@index([clientId])
   @@index([insurerId])
@@ -385,6 +397,7 @@ model User {
   renewals        Renewal[]    @relation("RenewalProcessor")
   auditLogs       AuditLog[]
   documents       Document[]
+  events          Event[]
 
   @@map("users")
 }
@@ -443,4 +456,29 @@ model AuditLog {
   @@index([userId])
   @@index([createdAt])
   @@map("audit_logs")
+}
+
+model Event {
+  id          Int       @id @default(autoincrement())
+  title       String    @db.VarChar(200)
+  description String?   @db.Text
+  startDate   DateTime  @map("start_date")
+  endDate     DateTime? @map("end_date")
+  allDay      Boolean   @default(false) @map("all_day")
+  type        EventType @default(OTHER)
+  color       String?   @db.VarChar(20)
+  userId      Int       @map("user_id")
+  policyId    Int?      @map("policy_id")
+  clientId    Int?      @map("client_id")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+
+  user   User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  policy Policy? @relation(fields: [policyId], references: [id], onDelete: Cascade)
+  client Client? @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([startDate])
+  @@index([type])
+  @@map("events")
 }
