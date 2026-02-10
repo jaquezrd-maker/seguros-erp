@@ -19,6 +19,10 @@ const clientBodySchema = z.object({
   address: z.string().optional().nullable(),
   city: z.string().max(100).optional().nullable(),
   province: z.string().max(100).optional().nullable(),
+  contactPerson: z.string().max(150).optional().nullable(),
+  contactPosition: z.string().max(100).optional().nullable(),
+  purchasingManager: z.string().max(150).optional().nullable(),
+  birthDate: z.string().optional().nullable(),
   notes: z.string().optional().nullable(),
 })
 
