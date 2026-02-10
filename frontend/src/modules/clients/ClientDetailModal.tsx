@@ -1,9 +1,10 @@
 import { useState, useEffect } from "react"
-import { Shield, AlertTriangle, Calendar, X, Clock } from "lucide-react"
+import { Shield, AlertTriangle, Calendar, X, Clock, FileText, Mail } from "lucide-react"
 import { api } from "../../api/client"
 import type { Client, Policy } from "../../types"
 import { fmt, fmtDate } from "../../utils/format"
 import StatusBadge from "../../components/ui/StatusBadge"
+import EmailPreviewDialog from "../../components/EmailPreviewDialog"
 
 interface ClientDetailModalProps {
   clientId: number
@@ -18,6 +19,7 @@ interface ClientDetail extends Client {
 export default function ClientDetailModal({ clientId, onClose }: ClientDetailModalProps) {
   const [client, setClient] = useState<ClientDetail | null>(null)
   const [loading, setLoading] = useState(true)
+  const [emailDialogOpen, setEmailDialogOpen] = useState(false)
 
   useEffect(() => {
     api.get<{ success: boolean; data: ClientDetail }>(`/clients/${clientId}`)
@@ -27,6 +29,10 @@ export default function ClientDetailModal({ clientId, onClose }: ClientDetailMod
       })
       .catch(() => setLoading(false))
   }, [clientId])
+
+  const handleDownloadPDF = () => {
+    window.open(`${import.meta.env.VITE_API_URL}/clients/${clientId}/pdf`, '_blank')
+  }
 
   if (loading) {
     return (
@@ -199,12 +205,37 @@ export default function ClientDetailModal({ clientId, onClose }: ClientDetailMod
           )}
         </div>
 
-        {/* Close Button */}
-        <div className="flex justify-end mt-6">
+        {/* Action Buttons */}
+        <div className="flex justify-between items-center mt-6">
+          <div className="flex gap-3">
+            <button
+              onClick={handleDownloadPDF}
+              className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-sm transition-colors"
+            >
+              <FileText size={16} />
+              Descargar PDF
+            </button>
+            <button
+              onClick={() => setEmailDialogOpen(true)}
+              className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-sm transition-colors"
+            >
+              <Mail size={16} />
+              Enviar Email
+            </button>
+          </div>
           <button onClick={onClose} className="px-6 py-2.5 rounded-xl bg-slate-700 hover:bg-slate-600 text-white text-sm transition-colors">
             Cerrar
           </button>
         </div>
+
+        {/* Email Preview Dialog */}
+        <EmailPreviewDialog
+          isOpen={emailDialogOpen}
+          onClose={() => setEmailDialogOpen(false)}
+          previewEndpoint={`/clients/${clientId}/email/preview`}
+          sendEndpoint={`/clients/${clientId}/email`}
+          title="Preview y Envío de Email - Cliente"
+        />
       </div>
     </div>
   )
