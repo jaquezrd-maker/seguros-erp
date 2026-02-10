@@ -130,10 +130,61 @@ export const policiesController = {
     }
   },
 
+  async previewEmail(req: Request, res: Response, next: NextFunction) {
+    try {
+      const id = Number(req.params.id)
+      const { recipients, includeAttachment } = req.query
+
+      // Fetch policy data
+      const policy = await policiesService.findById(id)
+
+      // Determine email recipients
+      const emailRecipients: string[] = []
+      const recipientsList = typeof recipients === 'string' ? recipients.split(',') : []
+
+      if (recipientsList.includes('client') && policy.client?.email) {
+        emailRecipients.push(policy.client.email)
+      }
+      if (recipientsList.includes('internal')) {
+        const internalEmail = process.env.INTERNAL_EMAIL || 'admin@seguropro.com'
+        emailRecipients.push(internalEmail)
+      }
+
+      // Calculate days until expiration
+      const today = new Date()
+      const endDate = new Date(policy.endDate)
+      const daysLeft = Math.ceil((endDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24))
+
+      // Generate email content (same as sendEmail but don't send)
+      const emailTemplate = policyExpirationReminderEmail({
+        clientName: policy.client?.name || 'Cliente',
+        policyNumber: policy.policyNumber,
+        insuranceType: policy.insuranceType?.name || '',
+        endDate: formatDate(policy.endDate),
+        daysLeft,
+        premium: Number(policy.premium),
+      })
+
+      // Return preview data
+      res.json({
+        success: true,
+        data: {
+          recipients: emailRecipients,
+          subject: emailTemplate.subject,
+          html: emailTemplate.html,
+          hasAttachment: includeAttachment === 'true',
+          policyNumber: policy.policyNumber,
+        }
+      })
+    } catch (error) {
+      next(error)
+    }
+  },
+
   async sendEmail(req: Request, res: Response, next: NextFunction) {
     try {
       const id = Number(req.params.id)
-      const { recipients, includeAttachment } = req.body
+      const { recipients, includeAttachment, customSubject, customHtml } = req.body
 
       // Fetch policy data
       const policy = await policiesService.findById(id)
@@ -199,12 +250,16 @@ export const policiesController = {
         })
       }
 
+      // Use custom subject/html if provided, otherwise use template
+      const emailSubject = customSubject || emailTemplate.subject
+      const emailHtml = customHtml || emailTemplate.html
+
       // Send email with debug
       const result = await sendEmailWithDebug(
         {
           to: emailRecipients,
-          subject: emailTemplate.subject,
-          html: emailTemplate.html,
+          subject: emailSubject,
+          html: emailHtml,
           attachments,
         },
         {

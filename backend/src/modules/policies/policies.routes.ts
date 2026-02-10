@@ -61,6 +61,13 @@ router.get(
   policiesController.generatePDF
 )
 
+// GET /:id/email/preview - Preview policy email (must be before /:id)
+router.get(
+  '/:id/email/preview',
+  rbacMiddleware(['ADMINISTRADOR', 'EJECUTIVO']),
+  policiesController.previewEmail
+)
+
 // POST /:id/email - Send policy email (must be before /:id)
 router.post(
   '/:id/email',
