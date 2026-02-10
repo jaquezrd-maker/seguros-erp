@@ -40,6 +40,13 @@ router.patch(
   policiesController.updateStatus
 )
 
+// POST /:id/reactivate - Reactivate a cancelled policy (must be before /:id)
+router.post(
+  '/:id/reactivate',
+  rbacMiddleware(['ADMINISTRADOR']),
+  policiesController.reactivate
+)
+
 // DELETE /:id/permanent - Permanently delete policy (must be before /:id)
 router.delete(
   '/:id/permanent',

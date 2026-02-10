@@ -219,4 +219,18 @@ export const policiesController = {
       res.status(500).json(formatEmailErrorResponse(error))
     }
   },
+
+  async reactivate(req: Request, res: Response, next: NextFunction) {
+    try {
+      const id = Number(req.params.id)
+      const policy = await policiesService.reactivate(id)
+      res.json({
+        success: true,
+        message: `Póliza ${policy.policyNumber} reactivada exitosamente`,
+        data: policy
+      })
+    } catch (error) {
+      next(error)
+    }
+  },
 }

@@ -492,6 +492,33 @@ export const policiesService = {
 
     return policies
   },
+
+  async reactivate(id: number) {
+    // Verificar que la póliza existe y está cancelada
+    const policy = await prisma.policy.findUnique({
+      where: { id },
+      select: { id: true, policyNumber: true, status: true },
+    })
+
+    if (!policy) {
+      throw new Error('Póliza no encontrada')
+    }
+
+    if (policy.status !== 'CANCELADA') {
+      throw new Error('Solo se pueden reactivar pólizas canceladas')
+    }
+
+    // Reactivar la póliza cambiando su status a VIGENTE
+    return prisma.policy.update({
+      where: { id },
+      data: { status: 'VIGENTE' },
+      include: {
+        client: { select: { id: true, name: true, cedulaRnc: true, email: true } },
+        insurer: { select: { id: true, name: true } },
+        insuranceType: { select: { id: true, name: true, category: true } },
+      },
+    })
+  },
 }
 
 async function generatePolicyNumber(): Promise<string> {
