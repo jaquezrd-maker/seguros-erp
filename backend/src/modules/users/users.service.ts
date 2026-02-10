@@ -1,5 +1,6 @@
 import prisma from '../../config/database'
 import { UserRole, UserStatus } from '@prisma/client'
+import { supabaseAdmin } from '../../config/supabase'
 
 interface UserFilters {
   search?: string
@@ -12,6 +13,7 @@ interface CreateUserInput {
   email: string
   role: UserRole
   phone?: string | null
+  password: string
 }
 
 interface UpdateUserInput {
@@ -97,7 +99,7 @@ export class UsersService {
   }
 
   async create(input: CreateUserInput) {
-    // Check for existing email
+    // Check for existing email in database
     const existing = await prisma.user.findUnique({
       where: { email: input.email },
     })
@@ -106,6 +108,22 @@ export class UsersService {
       throw new Error('Ya existe un usuario con este correo electrónico')
     }
 
+    // Create user in Supabase Auth
+    const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
+      email: input.email,
+      password: input.password,
+      email_confirm: true,
+    })
+
+    if (authError) {
+      throw new Error(`Error al crear usuario en Supabase: ${authError.message}`)
+    }
+
+    if (!authData.user) {
+      throw new Error('No se pudo crear el usuario en Supabase')
+    }
+
+    // Create user in database linked to Supabase user
     const user = await prisma.user.create({
       data: {
         name: input.name,
@@ -113,6 +131,7 @@ export class UsersService {
         role: input.role,
         phone: input.phone || null,
         status: 'ACTIVO',
+        supabaseUserId: authData.user.id,
       },
       select: {
         id: true,

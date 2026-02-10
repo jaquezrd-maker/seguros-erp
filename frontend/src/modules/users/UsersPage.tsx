@@ -9,7 +9,7 @@ import StatCard from "../../components/ui/StatCard"
 import Modal from "../../components/ui/Modal"
 import FormInput from "../../components/ui/FormInput"
 
-const defaultForm = { name: "", email: "", role: "EJECUTIVO", phone: "" }
+const defaultForm = { name: "", email: "", role: "EJECUTIVO", phone: "", password: "" }
 
 export default function UsersPage() {
   const crud = useCrudModule<ERPUser>({ endpoint: "/users", defaultForm })
@@ -75,6 +75,18 @@ export default function UsersPage() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <FormInput label="Nombre" value={crud.form.name} onChange={v => crud.updateField("name", v)} required />
           <FormInput label="Email" type="email" value={crud.form.email} onChange={v => crud.updateField("email", v)} required />
+          {crud.modal === "create" && (
+            <div className="md:col-span-2">
+              <FormInput
+                label="Contraseña"
+                type="password"
+                value={crud.form.password}
+                onChange={v => crud.updateField("password", v)}
+                required
+                placeholder="Mínimo 8 caracteres, incluir mayúsculas, minúsculas y números"
+              />
+            </div>
+          )}
           <FormInput label="Rol" type="select" value={crud.form.role} onChange={v => crud.updateField("role", v)} required
             options={[
               { value: "ADMINISTRADOR", label: "Administrador" },
