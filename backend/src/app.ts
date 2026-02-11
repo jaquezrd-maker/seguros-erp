@@ -49,9 +49,15 @@ app.use(cors({
     // Allow any Vercel deployment
     if (origin.includes('.vercel.app')) return callback(null, true)
 
-    // Allow custom domains from env var
-    if (process.env.FRONTEND_URL && origin === process.env.FRONTEND_URL) {
-      return callback(null, true)
+    // Allow custom domains from env var (both HTTP and HTTPS)
+    if (process.env.FRONTEND_URL) {
+      const frontendUrl = process.env.FRONTEND_URL
+      const frontendUrlHttp = frontendUrl.replace('https://', 'http://')
+      const frontendUrlHttps = frontendUrl.replace('http://', 'https://')
+
+      if (origin === frontendUrl || origin === frontendUrlHttp || origin === frontendUrlHttps) {
+        return callback(null, true)
+      }
     }
 
     // Reject other origins
