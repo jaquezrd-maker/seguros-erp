@@ -58,7 +58,14 @@ app.use(cors({
     callback(new Error('Not allowed by CORS'))
   },
   credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  exposedHeaders: ['Content-Length', 'X-JSON'],
+  maxAge: 86400, // 24 hours
 }))
+
+// Handle OPTIONS preflight requests explicitly
+app.options('*', cors())
 
 // Rate limiting
 app.use(rateLimit({
