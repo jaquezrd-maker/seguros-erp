@@ -36,3 +36,7 @@ coverage/
 *.tmp
 .vercel
 .env*.local
+
+# Archivos locales grandes
+DGII_RNC.TXT
+*.pdf
