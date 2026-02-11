@@ -102,7 +102,7 @@ export default function ClientDashboard() {
           title="Renovaciones"
           value={stats.pendingRenewals}
           icon={RefreshCw}
-          color="cyan"
+          color="teal"
         />
         <StatCard
           title="Reclamos Activos"

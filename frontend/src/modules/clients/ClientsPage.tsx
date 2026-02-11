@@ -171,7 +171,7 @@ export default function ClientsPage() {
     setInvitationError("")
 
     try {
-      const response = await api.post<{ success: boolean; data: { registrationUrl: string }; message: string }>(`/client-portal/invitations/${invitationTarget.id}`)
+      const response = await api.post<{ success: boolean; data: { registrationUrl: string }; message: string }>(`/client-portal/invitations/${invitationTarget.id}`, {})
 
       // Guardar el URL de registro
       setRegistrationUrl(response.data.registrationUrl)

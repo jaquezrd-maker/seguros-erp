@@ -141,7 +141,7 @@ export default function TodoList() {
 
   const handleToggle = async (id: number) => {
     try {
-      await api.patch(`/tasks/${id}/toggle`)
+      await api.patch(`/tasks/${id}/toggle`, {})
       fetchTasks()
     } catch (error) {
       console.error("Error toggling task:", error)

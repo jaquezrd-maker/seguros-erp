@@ -4,6 +4,7 @@ import { api } from "../../api/client"
 import { fmtDate, fmt } from "../../utils/format"
 import StatusBadge from "../../components/ui/StatusBadge"
 import Modal from "../../components/ui/Modal"
+import { supabase } from "../../lib/supabase"
 
 interface Policy {
   id: number
@@ -63,9 +64,10 @@ export default function ClientPoliciesPage() {
   const handleDownloadPDF = async (policyId: number, policyNumber: string) => {
     setDownloadingId(policyId)
     try {
+      const { data: { session } } = await supabase.auth.getSession()
       const response = await fetch(`${import.meta.env.VITE_API_URL}/client-portal-data/policies/${policyId}/pdf`, {
         headers: {
-          'Authorization': `Bearer ${(await api.get('/auth/me')).headers?.authorization || ''}`
+          'Authorization': `Bearer ${session?.access_token || ''}`
         }
       })
 
