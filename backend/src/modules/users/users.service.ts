@@ -301,7 +301,7 @@ export class UsersService {
       }
 
       // Encontrar usuarios huérfanos (en Supabase pero no en BD)
-      const orphanedUsers = (supabaseUsers?.filter(su => !dbSupabaseIds.has(su.id)) || []) as Array<{ id: string; email?: string }>
+      const orphanedUsers: Array<{ id: string; email?: string }> = supabaseUsers?.filter(su => !dbSupabaseIds.has(su.id)) || []
 
       // Eliminar usuarios huérfanos
       const deletedUsers: Array<{ id: string; email?: string }> = []

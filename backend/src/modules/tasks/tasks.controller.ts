@@ -67,7 +67,7 @@ export const tasksController = {
   async delete(req: Request, res: Response, next: NextFunction) {
     try {
       const userId = req.user!.id
-      const id = parseInt(req.params.id)
+      const id = parseInt(Array.isArray(req.params.id) ? req.params.id[0] : req.params.id)
       await service.delete(id, userId)
       res.json({ success: true, message: 'Tarea eliminada' })
     } catch (error) {

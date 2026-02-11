@@ -42,7 +42,7 @@ export class ClientPortalController {
    */
   validateInvitation = async (req: Request, res: Response) => {
     try {
-      const { token } = req.params
+      const token = Array.isArray(req.params.token) ? req.params.token[0] : req.params.token
 
       const invitation = await clientPortalService.validateInvitation(token)
 

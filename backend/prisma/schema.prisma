@@ -70,6 +70,7 @@ enum CommissionStatus {
 }
 
 enum UserRole {
+  SUPER_ADMIN
   ADMINISTRADOR
   EJECUTIVO
   CONTABILIDAD
@@ -114,16 +115,84 @@ enum EventType {
   OTHER
 }
 
+enum CompanyStatus {
+  ACTIVO
+  SUSPENDIDO
+  TRIAL
+  CANCELADO
+}
+
 // ===================== MODELS =====================
 
+model Company {
+  id        Int           @id @default(autoincrement())
+  name      String        @db.VarChar(200)
+  slug      String        @unique @db.VarChar(100)
+  legalName String?       @map("legal_name") @db.VarChar(200)
+  rnc       String?       @unique @db.VarChar(20)
+  email     String?       @db.VarChar(150)
+  phone     String?       @db.VarChar(20)
+  address   String?       @db.Text
+  logo      String?       @db.VarChar(255)
+  settings  Json?
+  status    CompanyStatus @default(ACTIVO)
+  trialEndsAt DateTime?   @map("trial_ends_at")
+  createdAt DateTime      @default(now()) @map("created_at")
+  updatedAt DateTime      @updatedAt @map("updated_at")
+
+  companyUsers      CompanyUser[]
+  clients           Client[]
+  insurers          Insurer[]
+  insuranceTypes    InsuranceType[]
+  policies          Policy[]
+  endorsements      Endorsement[]
+  claims            Claim[]
+  claimNotes        ClaimNote[]
+  payments          Payment[]
+  commissionRules   CommissionRule[]
+  commissions       Commission[]
+  renewals          Renewal[]
+  documents         Document[]
+  notifications     Notification[]
+  auditLogs         AuditLog[]
+  events            Event[]
+  tasks             Task[]
+  clientContacts    ClientContact[]
+  insurerBranches   InsurerBranch[]
+  clientInvitations ClientInvitation[]
+
+  @@index([status])
+  @@index([slug])
+  @@map("companies")
+}
+
+model CompanyUser {
+  id        Int      @id @default(autoincrement())
+  userId    Int      @map("user_id")
+  companyId Int      @map("company_id")
+  role      UserRole
+  isActive  Boolean  @default(true) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, companyId])
+  @@index([userId])
+  @@index([companyId])
+  @@map("company_users")
+}
+
 model Client {
-  id        Int          @id @default(autoincrement())
-  type      ClientType
-  name      String       @db.VarChar(200)
-  cedulaRnc String       @unique @map("cedula_rnc") @db.VarChar(20)
-  phone     String?      @db.VarChar(20)
-  phoneAlt  String?      @map("phone_alt") @db.VarChar(20)
-  email     String?      @db.VarChar(150)
+  id                Int          @id @default(autoincrement())
+  companyId         Int          @map("company_id")
+  type              ClientType
+  name              String       @db.VarChar(200)
+  cedulaRnc         String       @map("cedula_rnc") @db.VarChar(20)
+  phone             String?      @db.VarChar(20)
+  phoneAlt          String?      @map("phone_alt") @db.VarChar(20)
+  email             String?      @db.VarChar(150)
   address           String?      @db.Text
   city              String?      @db.VarChar(100)
   province          String?      @db.VarChar(100)
@@ -133,11 +202,12 @@ model Client {
   birthDate         DateTime?    @map("birth_date") @db.Date
   status            ClientStatus @default(ACTIVO)
   notes             String?      @db.Text
-  createdBy Int?         @map("created_by")
-  userId    Int?         @unique @map("user_id")
-  createdAt DateTime     @default(now()) @map("created_at")
-  updatedAt DateTime     @updatedAt @map("updated_at")
+  createdBy         Int?         @map("created_by")
+  userId            Int?         @unique @map("user_id")
+  createdAt         DateTime     @default(now()) @map("created_at")
+  updatedAt         DateTime     @updatedAt @map("updated_at")
 
+  company           Company           @relation(fields: [companyId], references: [id])
   creator           User?             @relation("ClientCreator", fields: [createdBy], references: [id])
   user              User?             @relation("ClientPortalUser", fields: [userId], references: [id])
   policies          Policy[]
@@ -146,29 +216,34 @@ model Client {
   events            Event[]
   clientInvitations ClientInvitation[]
 
-  @@index([status])
-  @@index([cedulaRnc])
-  @@index([name])
+  @@unique([companyId, cedulaRnc])
+  @@index([companyId])
+  @@index([companyId, status])
+  @@index([companyId, name])
   @@map("clients")
 }
 
 model ClientContact {
-  id       Int     @id @default(autoincrement())
-  clientId Int     @map("client_id")
-  name     String  @db.VarChar(150)
-  role     String? @db.VarChar(100)
-  phone    String? @db.VarChar(20)
-  email    String? @db.VarChar(150)
+  id        Int     @id @default(autoincrement())
+  companyId Int     @map("company_id")
+  clientId  Int     @map("client_id")
+  name      String  @db.VarChar(150)
+  role      String? @db.VarChar(100)
+  phone     String? @db.VarChar(20)
+  email     String? @db.VarChar(150)
 
-  client Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  company Company @relation(fields: [companyId], references: [id])
+  client  Client  @relation(fields: [clientId], references: [id], onDelete: Cascade)
 
+  @@index([companyId])
   @@map("client_contacts")
 }
 
 model Insurer {
   id            Int           @id @default(autoincrement())
+  companyId     Int           @map("company_id")
   name          String        @db.VarChar(200)
-  rnc           String        @unique @db.VarChar(20)
+  rnc           String        @db.VarChar(20)
   legalName     String?       @map("legal_name") @db.VarChar(200)
   phone         String?       @db.VarChar(20)
   email         String?       @db.VarChar(150)
@@ -178,39 +253,51 @@ model Insurer {
   createdAt     DateTime      @default(now()) @map("created_at")
   updatedAt     DateTime      @updatedAt @map("updated_at")
 
+  company         Company            @relation(fields: [companyId], references: [id])
   policies        Policy[]
   branches        InsurerBranch[]
   commissionRules CommissionRule[]
 
+  @@unique([companyId, rnc])
+  @@index([companyId])
+  @@index([companyId, status])
   @@map("insurers")
 }
 
 model InsurerBranch {
   id        Int      @id @default(autoincrement())
+  companyId Int      @map("company_id")
   insurerId Int      @map("insurer_id")
   name      String   @db.VarChar(150)
   ramos     String[]
 
+  company Company @relation(fields: [companyId], references: [id])
   insurer Insurer @relation(fields: [insurerId], references: [id], onDelete: Cascade)
 
+  @@index([companyId])
   @@map("insurer_branches")
 }
 
 model InsuranceType {
   id          Int     @id @default(autoincrement())
-  name        String  @unique @db.VarChar(100)
+  companyId   Int     @map("company_id")
+  name        String  @db.VarChar(100)
   category    String? @db.VarChar(100)
   description String? @db.Text
 
+  company         Company            @relation(fields: [companyId], references: [id])
   policies        Policy[]
   commissionRules CommissionRule[]
 
+  @@unique([companyId, name])
+  @@index([companyId])
   @@map("insurance_types")
 }
 
 model Policy {
   id                   Int           @id @default(autoincrement())
-  policyNumber         String        @unique @map("policy_number") @db.VarChar(30)
+  companyId            Int           @map("company_id")
+  policyNumber         String        @map("policy_number") @db.VarChar(30)
   clientId             Int           @map("client_id")
   insurerId            Int           @map("insurer_id")
   insuranceTypeId      Int           @map("insurance_type_id")
@@ -228,6 +315,7 @@ model Policy {
   createdAt            DateTime      @default(now()) @map("created_at")
   updatedAt            DateTime      @updatedAt @map("updated_at")
 
+  company       Company       @relation(fields: [companyId], references: [id])
   client        Client        @relation(fields: [clientId], references: [id])
   insurer       Insurer       @relation(fields: [insurerId], references: [id])
   insuranceType InsuranceType @relation(fields: [insuranceTypeId], references: [id])
@@ -240,15 +328,17 @@ model Policy {
   notifications Notification[]
   events        Event[]
 
-  @@index([clientId])
-  @@index([insurerId])
-  @@index([status])
-  @@index([endDate])
+  @@unique([companyId, policyNumber])
+  @@index([companyId])
+  @@index([companyId, clientId])
+  @@index([companyId, status])
+  @@index([companyId, endDate])
   @@map("policies")
 }
 
 model Endorsement {
   id            Int      @id @default(autoincrement())
+  companyId     Int      @map("company_id")
   policyId      Int      @map("policy_id")
   type          String   @db.VarChar(100)
   description   String?  @db.Text
@@ -257,15 +347,18 @@ model Endorsement {
   documentUrl   String?  @map("document_url")
   createdAt     DateTime @default(now()) @map("created_at")
 
-  policy Policy @relation(fields: [policyId], references: [id], onDelete: Cascade)
+  company Company @relation(fields: [companyId], references: [id])
+  policy  Policy  @relation(fields: [policyId], references: [id], onDelete: Cascade)
 
+  @@index([companyId])
   @@map("endorsements")
 }
 
 model Claim {
   id              Int           @id @default(autoincrement())
+  companyId       Int           @map("company_id")
   policyId        Int           @map("policy_id")
-  claimNumber     String        @unique @map("claim_number") @db.VarChar(30)
+  claimNumber     String        @map("claim_number") @db.VarChar(30)
   type            String        @db.VarChar(100)
   dateOccurred    DateTime      @map("date_occurred") @db.Date
   dateReported    DateTime      @default(now()) @map("date_reported")
@@ -278,31 +371,38 @@ model Claim {
   createdAt       DateTime      @default(now()) @map("created_at")
   updatedAt       DateTime      @updatedAt @map("updated_at")
 
+  company  Company     @relation(fields: [companyId], references: [id])
   policy   Policy      @relation(fields: [policyId], references: [id])
   assignee User?       @relation("ClaimAssignee", fields: [assignedTo], references: [id])
   notes    ClaimNote[]
 
-  @@index([policyId])
-  @@index([status])
+  @@unique([companyId, claimNumber])
+  @@index([companyId])
+  @@index([companyId, policyId])
+  @@index([companyId, status])
   @@map("claims")
 }
 
 model ClaimNote {
   id         Int      @id @default(autoincrement())
+  companyId  Int      @map("company_id")
   claimId    Int      @map("claim_id")
   userId     Int      @map("user_id")
   note       String   @db.Text
   isInternal Boolean  @default(true) @map("is_internal")
   createdAt  DateTime @default(now()) @map("created_at")
 
-  claim Claim @relation(fields: [claimId], references: [id], onDelete: Cascade)
-  user  User  @relation(fields: [userId], references: [id])
+  company Company @relation(fields: [companyId], references: [id])
+  claim   Claim   @relation(fields: [claimId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id])
 
+  @@index([companyId])
   @@map("claim_notes")
 }
 
 model Payment {
   id            Int           @id @default(autoincrement())
+  companyId     Int           @map("company_id")
   policyId      Int           @map("policy_id")
   clientId      Int           @map("client_id")
   amount        Decimal       @db.Decimal(12, 2)
@@ -318,18 +418,21 @@ model Payment {
   createdBy     Int?          @map("created_by")
   createdAt     DateTime      @default(now()) @map("created_at")
 
-  policy  Policy @relation(fields: [policyId], references: [id])
-  client  Client @relation(fields: [clientId], references: [id])
-  creator User?  @relation("PaymentCreator", fields: [createdBy], references: [id])
+  company Company @relation(fields: [companyId], references: [id])
+  policy  Policy  @relation(fields: [policyId], references: [id])
+  client  Client  @relation(fields: [clientId], references: [id])
+  creator User?   @relation("PaymentCreator", fields: [createdBy], references: [id])
 
-  @@index([clientId])
-  @@index([policyId])
-  @@index([status])
+  @@index([companyId])
+  @@index([companyId, clientId])
+  @@index([companyId, policyId])
+  @@index([companyId, status])
   @@map("payments")
 }
 
 model CommissionRule {
   id              Int       @id @default(autoincrement())
+  companyId       Int       @map("company_id")
   insurerId       Int       @map("insurer_id")
   insuranceTypeId Int?      @map("insurance_type_id")
   ratePercentage  Decimal   @map("rate_percentage") @db.Decimal(5, 2)
@@ -337,15 +440,18 @@ model CommissionRule {
   effectiveFrom   DateTime  @map("effective_from") @db.Date
   effectiveTo     DateTime? @map("effective_to") @db.Date
 
+  company       Company        @relation(fields: [companyId], references: [id])
   insurer       Insurer        @relation(fields: [insurerId], references: [id])
   insuranceType InsuranceType? @relation(fields: [insuranceTypeId], references: [id])
   commissions   Commission[]
 
+  @@index([companyId])
   @@map("commission_rules")
 }
 
 model Commission {
   id            Int              @id @default(autoincrement())
+  companyId     Int              @map("company_id")
   policyId      Int              @map("policy_id")
   producerId    Int              @map("producer_id")
   ruleId        Int?             @map("rule_id")
@@ -357,18 +463,21 @@ model Commission {
   paidDate      DateTime?        @map("paid_date") @db.Date
   createdAt     DateTime         @default(now()) @map("created_at")
 
+  company  Company         @relation(fields: [companyId], references: [id])
   policy   Policy          @relation(fields: [policyId], references: [id])
   producer User            @relation("ProducerCommissions", fields: [producerId], references: [id])
   rule     CommissionRule? @relation(fields: [ruleId], references: [id])
 
-  @@index([producerId])
-  @@index([policyId])
-  @@index([status])
+  @@index([companyId])
+  @@index([companyId, producerId])
+  @@index([companyId, policyId])
+  @@index([companyId, status])
   @@map("commissions")
 }
 
 model Renewal {
   id              Int           @id @default(autoincrement())
+  companyId       Int           @map("company_id")
   policyId        Int           @map("policy_id")
   originalEndDate DateTime      @map("original_end_date") @db.Date
   newEndDate      DateTime?     @map("new_end_date") @db.Date
@@ -377,26 +486,30 @@ model Renewal {
   processedBy     Int?          @map("processed_by")
   createdAt       DateTime      @default(now()) @map("created_at")
 
-  policy    Policy @relation(fields: [policyId], references: [id])
-  processor User?  @relation("RenewalProcessor", fields: [processedBy], references: [id])
+  company   Company @relation(fields: [companyId], references: [id])
+  policy    Policy  @relation(fields: [policyId], references: [id])
+  processor User?   @relation("RenewalProcessor", fields: [processedBy], references: [id])
 
-  @@index([status])
+  @@index([companyId])
+  @@index([companyId, status])
   @@map("renewals")
 }
 
 model User {
-  id              Int        @id @default(autoincrement())
-  supabaseUserId  String?    @unique @map("supabase_user_id")
-  name            String     @db.VarChar(150)
-  email           String     @unique @db.VarChar(150)
-  role            UserRole   @default(EJECUTIVO)
-  phone               String?            @db.VarChar(20)
-  status              UserStatus         @default(ACTIVO)
-  forcePasswordChange Boolean            @default(false) @map("force_password_change")
-  lastLogin           DateTime?          @map("last_login")
-  createdAt           DateTime           @default(now()) @map("created_at")
-  updatedAt           DateTime           @updatedAt @map("updated_at")
+  id                  Int        @id @default(autoincrement())
+  supabaseUserId      String?    @unique @map("supabase_user_id")
+  name                String     @db.VarChar(150)
+  email               String     @unique @db.VarChar(150)
+  role                UserRole   @default(EJECUTIVO)
+  phone               String?    @db.VarChar(20)
+  status              UserStatus @default(ACTIVO)
+  forcePasswordChange Boolean    @default(false) @map("force_password_change")
+  activeCompanyId     Int?       @map("active_company_id")
+  lastLogin           DateTime?  @map("last_login")
+  createdAt           DateTime   @default(now()) @map("created_at")
+  updatedAt           DateTime   @updatedAt @map("updated_at")
 
+  companies          CompanyUser[]      @relation
   createdClients     Client[]           @relation("ClientCreator")
   portalClient       Client?            @relation("ClientPortalUser")
   createdPolicies    Policy[]           @relation("PolicyCreator")
@@ -416,6 +529,7 @@ model User {
 
 model Document {
   id         Int      @id @default(autoincrement())
+  companyId  Int      @map("company_id")
   entityType String   @map("entity_type") @db.VarChar(50)
   entityId   Int      @map("entity_id")
   name       String   @db.VarChar(255)
@@ -427,31 +541,37 @@ model Document {
   uploadedBy Int      @map("uploaded_by")
   createdAt  DateTime @default(now()) @map("created_at")
 
-  uploader User @relation(fields: [uploadedBy], references: [id])
+  company  Company @relation(fields: [companyId], references: [id])
+  uploader User    @relation(fields: [uploadedBy], references: [id])
 
-  @@index([entityType, entityId])
+  @@index([companyId])
+  @@index([companyId, entityType, entityId])
   @@map("documents")
 }
 
 model Notification {
-  id        Int                @id @default(autoincrement())
-  policyId  Int?               @map("policy_id")
-  type      String             @db.VarChar(50)
+  id        Int                 @id @default(autoincrement())
+  companyId Int                 @map("company_id")
+  policyId  Int?                @map("policy_id")
+  type      String              @db.VarChar(50)
   channel   NotificationChannel
-  recipient String             @db.VarChar(200)
-  message   String             @db.Text
-  status    NotificationStatus @default(PENDIENTE)
-  sentAt    DateTime?          @map("sent_at")
-  createdAt DateTime           @default(now()) @map("created_at")
+  recipient String              @db.VarChar(200)
+  message   String              @db.Text
+  status    NotificationStatus  @default(PENDIENTE)
+  sentAt    DateTime?           @map("sent_at")
+  createdAt DateTime            @default(now()) @map("created_at")
 
-  policy Policy? @relation(fields: [policyId], references: [id])
+  company Company @relation(fields: [companyId], references: [id])
+  policy  Policy? @relation(fields: [policyId], references: [id])
 
-  @@index([status])
+  @@index([companyId])
+  @@index([companyId, status])
   @@map("notifications")
 }
 
 model AuditLog {
   id         Int      @id @default(autoincrement())
+  companyId  Int      @map("company_id")
   userId     Int      @map("user_id")
   action     String   @db.VarChar(50)
   entityType String   @map("entity_type") @db.VarChar(50)
@@ -462,16 +582,19 @@ model AuditLog {
   userAgent  String?  @map("user_agent") @db.Text
   createdAt  DateTime @default(now()) @map("created_at")
 
-  user User @relation(fields: [userId], references: [id])
+  company Company @relation(fields: [companyId], references: [id])
+  user    User    @relation(fields: [userId], references: [id])
 
-  @@index([entityType, entityId])
-  @@index([userId])
-  @@index([createdAt])
+  @@index([companyId])
+  @@index([companyId, entityType, entityId])
+  @@index([companyId, userId])
+  @@index([companyId, createdAt])
   @@map("audit_logs")
 }
 
 model Event {
   id          Int       @id @default(autoincrement())
+  companyId   Int       @map("company_id")
   title       String    @db.VarChar(200)
   description String?   @db.Text
   startDate   DateTime  @map("start_date")
@@ -485,32 +608,37 @@ model Event {
   createdAt   DateTime  @default(now()) @map("created_at")
   updatedAt   DateTime  @updatedAt @map("updated_at")
 
-  user   User    @relation(fields: [userId], references: [id], onDelete: Cascade)
-  policy Policy? @relation(fields: [policyId], references: [id], onDelete: Cascade)
-  client Client? @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  company Company @relation(fields: [companyId], references: [id])
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  policy  Policy? @relation(fields: [policyId], references: [id], onDelete: Cascade)
+  client  Client? @relation(fields: [clientId], references: [id], onDelete: Cascade)
 
-  @@index([userId])
-  @@index([startDate])
-  @@index([type])
+  @@index([companyId])
+  @@index([companyId, userId])
+  @@index([companyId, startDate])
+  @@index([companyId, type])
   @@map("events")
 }
 
 model Task {
-  id          Int       @id @default(autoincrement())
-  title       String    @db.VarChar(200)
-  description String?   @db.Text
-  completed   Boolean   @default(false)
+  id          Int          @id @default(autoincrement())
+  companyId   Int          @map("company_id")
+  title       String       @db.VarChar(200)
+  description String?      @db.Text
+  completed   Boolean      @default(false)
   priority    TaskPriority @default(MEDIA)
-  dueDate     DateTime? @map("due_date") @db.Date
-  userId      Int       @map("user_id")
-  createdAt   DateTime  @default(now()) @map("created_at")
-  updatedAt   DateTime  @updatedAt @map("updated_at")
+  dueDate     DateTime?    @map("due_date") @db.Date
+  userId      Int          @map("user_id")
+  createdAt   DateTime     @default(now()) @map("created_at")
+  updatedAt   DateTime     @updatedAt @map("updated_at")
 
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  company Company @relation(fields: [companyId], references: [id])
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  @@index([userId])
-  @@index([completed])
-  @@index([dueDate])
+  @@index([companyId])
+  @@index([companyId, userId])
+  @@index([companyId, completed])
+  @@index([companyId, dueDate])
   @@map("tasks")
 }
 
@@ -523,6 +651,7 @@ enum TaskPriority {
 
 model ClientInvitation {
   id        Int      @id @default(autoincrement())
+  companyId Int      @map("company_id")
   clientId  Int      @map("client_id")
   email     String   @db.VarChar(150)
   token     String   @unique @db.VarChar(64)
@@ -531,9 +660,11 @@ model ClientInvitation {
   createdBy Int      @map("created_by")
   createdAt DateTime @default(now()) @map("created_at")
 
-  client  Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
-  creator User   @relation("InvitationCreator", fields: [createdBy], references: [id])
+  company Company @relation(fields: [companyId], references: [id])
+  client  Client  @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  creator User    @relation("InvitationCreator", fields: [createdBy], references: [id])
 
+  @@index([companyId])
   @@index([token])
   @@index([email])
   @@index([clientId])
