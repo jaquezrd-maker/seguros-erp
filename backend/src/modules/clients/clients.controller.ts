@@ -280,7 +280,7 @@ export const clientsController = {
         return res.status(400).json({ success: false, message: 'RNC/Cédula es requerido' })
       }
 
-      const rncData = await lookupRNC(rnc)
+      const rncData = await lookupRNC(String(rnc))
 
       if (!rncData) {
         return res.status(404).json({ success: false, message: 'RNC/Cédula no encontrado en la base de datos DGII' })

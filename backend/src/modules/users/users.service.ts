@@ -301,10 +301,10 @@ export class UsersService {
       }
 
       // Encontrar usuarios huérfanos (en Supabase pero no en BD)
-      const orphanedUsers = supabaseUsers?.filter(su => !dbSupabaseIds.has(su.id)) || []
+      const orphanedUsers = (supabaseUsers?.filter(su => !dbSupabaseIds.has(su.id)) || []) as Array<{ id: string; email?: string }>
 
       // Eliminar usuarios huérfanos
-      const deletedUsers = []
+      const deletedUsers: Array<{ id: string; email?: string }> = []
       for (const orphan of orphanedUsers) {
         try {
           const { error: deleteError } = await supabaseAdmin.auth.admin.deleteUser(orphan.id)

@@ -83,7 +83,7 @@ export class InsurersController {
         return res.status(400).json({ success: false, message: 'RNC es requerido' })
       }
 
-      const rncData = await lookupRNC(rnc)
+      const rncData = await lookupRNC(String(rnc))
 
       if (!rncData) {
         return res.status(404).json({ success: false, message: 'RNC no encontrado en la base de datos DGII' })
