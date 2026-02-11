@@ -1,0 +1,16 @@
+name: Deploy Backend to Vercel
+
+on:
+  push:
+    branches:
+      - master
+    paths:
+      - 'backend/**'
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger Vercel Backend Deployment
+        run: |
+          curl -X POST "${{ secrets.VERCEL_BACKEND_DEPLOY_HOOK }}"
