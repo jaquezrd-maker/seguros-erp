@@ -55,6 +55,7 @@ export class EventsController {
         startDate: new Date(req.body.startDate),
         endDate: req.body.endDate ? new Date(req.body.endDate) : undefined,
         userId: req.user!.id,
+        companyId: req.user!.companyId,
       })
 
       return res.status(201).json({

@@ -1,5 +1,6 @@
 import prisma from '../../config/database'
 import { EventType } from '@prisma/client'
+import { getTenantContext } from '../../middleware/tenant-isolation.middleware'
 
 interface EventFilters {
   startDate?: Date
@@ -19,6 +20,7 @@ interface CreateEventInput {
   type: EventType
   color?: string
   userId: number
+  companyId?: number
   policyId?: number
   clientId?: number
 }
@@ -40,7 +42,16 @@ export class EventsService {
     const { startDate, endDate, type, userId, page = 1, limit = 100 } = filters
     const skip = (page - 1) * limit
 
+    // Get tenant context for company filtering
+    const tenantContext = getTenantContext()
+    const companyId = tenantContext.companyId
+
     const where: any = {}
+
+    // Filter by company if not bypassing (SUPER_ADMIN in global view)
+    if (companyId && !tenantContext.bypassTenantCheck) {
+      where.companyId = companyId
+    }
 
     // Filter by date range
     if (startDate && endDate) {
@@ -127,6 +138,10 @@ export class EventsService {
   }
 
   async findById(id: number) {
+    // Get tenant context for company filtering
+    const tenantContext = getTenantContext()
+    const companyId = tenantContext.companyId
+
     const event = await prisma.event.findUnique({
       where: { id },
       include: {
@@ -162,10 +177,20 @@ export class EventsService {
       throw new Error('Evento no encontrado')
     }
 
+    // Verify event belongs to user's company (unless bypassing for SUPER_ADMIN)
+    if (companyId && !tenantContext.bypassTenantCheck && event.companyId !== companyId) {
+      throw new Error('Evento no encontrado')
+    }
+
     return event
   }
 
   async create(input: CreateEventInput) {
+    // Validate companyId is provided
+    if (!input.companyId) {
+      throw new Error('No se puede crear un evento sin contexto de empresa')
+    }
+
     const event = await prisma.event.create({
       data: {
         title: input.title,
@@ -176,6 +201,7 @@ export class EventsService {
         type: input.type,
         color: input.color || null,
         userId: input.userId,
+        companyId: input.companyId,
         policyId: input.policyId || null,
         clientId: input.clientId || null,
       },
@@ -205,9 +231,18 @@ export class EventsService {
   }
 
   async update(id: number, input: UpdateEventInput) {
+    // Get tenant context for company filtering
+    const tenantContext = getTenantContext()
+    const companyId = tenantContext.companyId
+
     const existing = await prisma.event.findUnique({ where: { id } })
 
     if (!existing) {
+      throw new Error('Evento no encontrado')
+    }
+
+    // Verify event belongs to user's company (unless bypassing for SUPER_ADMIN)
+    if (companyId && !tenantContext.bypassTenantCheck && existing.companyId !== companyId) {
       throw new Error('Evento no encontrado')
     }
 
@@ -251,9 +286,18 @@ export class EventsService {
   }
 
   async delete(id: number) {
+    // Get tenant context for company filtering
+    const tenantContext = getTenantContext()
+    const companyId = tenantContext.companyId
+
     const existing = await prisma.event.findUnique({ where: { id } })
 
     if (!existing) {
+      throw new Error('Evento no encontrado')
+    }
+
+    // Verify event belongs to user's company (unless bypassing for SUPER_ADMIN)
+    if (companyId && !tenantContext.bypassTenantCheck && existing.companyId !== companyId) {
       throw new Error('Evento no encontrado')
     }
 
@@ -262,6 +306,10 @@ export class EventsService {
 
   // Get calendar events including policy expirations and payment due dates
   async getCalendarEvents(startDate: Date, endDate: Date, userId?: number) {
+    // Get tenant context for company filtering
+    const tenantContext = getTenantContext()
+    const companyId = tenantContext.companyId
+
     // Get custom events
     const eventsWhere: any = {
       OR: [
@@ -278,6 +326,11 @@ export class EventsService {
           ],
         },
       ],
+    }
+
+    // Filter by company if not bypassing (SUPER_ADMIN in global view)
+    if (companyId && !tenantContext.bypassTenantCheck) {
+      eventsWhere.companyId = companyId
     }
 
     if (userId) {
@@ -300,14 +353,21 @@ export class EventsService {
     })
 
     // Get policy expirations
-    const expiringPolicies = await prisma.policy.findMany({
-      where: {
-        endDate: {
-          gte: startDate,
-          lte: endDate,
-        },
-        status: 'VIGENTE',
+    const policyWhere: any = {
+      endDate: {
+        gte: startDate,
+        lte: endDate,
       },
+      status: 'VIGENTE',
+    }
+
+    // Filter by company if not bypassing
+    if (companyId && !tenantContext.bypassTenantCheck) {
+      policyWhere.companyId = companyId
+    }
+
+    const expiringPolicies = await prisma.policy.findMany({
+      where: policyWhere,
       include: {
         client: {
           select: { name: true },
@@ -319,14 +379,21 @@ export class EventsService {
     })
 
     // Get payment due dates
-    const upcomingPayments = await prisma.payment.findMany({
-      where: {
-        dueDate: {
-          gte: startDate,
-          lte: endDate,
-        },
-        status: 'PENDIENTE',
+    const paymentWhere: any = {
+      dueDate: {
+        gte: startDate,
+        lte: endDate,
       },
+      status: 'PENDIENTE',
+    }
+
+    // Filter by company if not bypassing
+    if (companyId && !tenantContext.bypassTenantCheck) {
+      paymentWhere.companyId = companyId
+    }
+
+    const upcomingPayments = await prisma.payment.findMany({
+      where: paymentWhere,
       include: {
         client: {
           select: { name: true },

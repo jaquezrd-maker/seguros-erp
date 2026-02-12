@@ -35,7 +35,8 @@ export const tasksController = {
   async create(req: Request, res: Response, next: NextFunction) {
     try {
       const userId = req.user!.id
-      const task = await service.create(userId, req.body)
+      const companyId = req.user!.companyId
+      const task = await service.create(userId, companyId, req.body)
       res.status(201).json({ success: true, data: task })
     } catch (error) {
       next(error)

@@ -41,9 +41,18 @@ export class TasksService {
     return task
   }
 
-  async create(userId: number, data: Prisma.TaskCreateInput) {
+  async create(userId: number, companyId: number | undefined, data: Prisma.TaskCreateInput) {
+    // If SUPER_ADMIN without company context, require companyId in request body
+    if (!companyId) {
+      throw new Error('No se puede crear una tarea sin contexto de empresa')
+    }
+
     // Convert dueDate string to Date if provided
-    const processedData = { ...data, user: { connect: { id: userId } } }
+    const processedData = {
+      ...data,
+      company: { connect: { id: companyId } },
+      user: { connect: { id: userId } },
+    }
     if (processedData.dueDate && typeof processedData.dueDate === 'string') {
       processedData.dueDate = new Date(processedData.dueDate)
     }
