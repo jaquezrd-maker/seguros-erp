@@ -81,6 +81,19 @@ export class UsersService {
         lastLogin: true,
         createdAt: true,
         updatedAt: true,
+        activeCompanyId: true,
+        companies: {
+          include: {
+            company: {
+              select: {
+                id: true,
+                name: true,
+                slug: true,
+                status: true,
+              },
+            },
+          },
+        },
         _count: {
           select: {
             createdClients: true,
@@ -278,6 +291,226 @@ export class UsersService {
         status: true,
       },
     })
+  }
+
+  /**
+   * Get companies for a specific user
+   */
+  async getUserCompanies(userId: number) {
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        companies: {
+          include: {
+            company: {
+              select: {
+                id: true,
+                name: true,
+                slug: true,
+                status: true,
+              },
+            },
+          },
+        },
+      },
+    })
+
+    if (!user) {
+      throw new Error('Usuario no encontrado')
+    }
+
+    return user.companies.map(cu => ({
+      companyId: cu.companyId,
+      companyName: cu.company.name,
+      companySlug: cu.company.slug,
+      companyStatus: cu.company.status,
+      role: cu.role,
+      isActive: cu.isActive,
+      createdAt: cu.createdAt,
+    }))
+  }
+
+  /**
+   * Add user to a company
+   */
+  async addUserToCompany(userId: number, companyId: number, role: UserRole) {
+    // Verify user exists
+    const user = await prisma.user.findUnique({ where: { id: userId } })
+    if (!user) {
+      throw new Error('Usuario no encontrado')
+    }
+
+    // Verify company exists
+    const company = await prisma.company.findUnique({ where: { id: companyId } })
+    if (!company) {
+      throw new Error('Empresa no encontrada')
+    }
+
+    // Check if already exists
+    const existing = await prisma.companyUser.findUnique({
+      where: {
+        userId_companyId: {
+          userId,
+          companyId,
+        },
+      },
+    })
+
+    if (existing) {
+      throw new Error('El usuario ya pertenece a esta empresa')
+    }
+
+    // Create relationship
+    const companyUser = await prisma.companyUser.create({
+      data: {
+        userId,
+        companyId,
+        role,
+        isActive: true,
+      },
+      include: {
+        company: {
+          select: {
+            id: true,
+            name: true,
+            slug: true,
+            status: true,
+          },
+        },
+      },
+    })
+
+    // If user doesn't have an active company, set this as active
+    if (!user.activeCompanyId) {
+      await prisma.user.update({
+        where: { id: userId },
+        data: { activeCompanyId: companyId },
+      })
+    }
+
+    return companyUser
+  }
+
+  /**
+   * Update user's role in a company
+   */
+  async updateUserCompanyRole(userId: number, companyId: number, role: UserRole) {
+    const companyUser = await prisma.companyUser.findUnique({
+      where: {
+        userId_companyId: {
+          userId,
+          companyId,
+        },
+      },
+    })
+
+    if (!companyUser) {
+      throw new Error('El usuario no pertenece a esta empresa')
+    }
+
+    return await prisma.companyUser.update({
+      where: {
+        userId_companyId: {
+          userId,
+          companyId,
+        },
+      },
+      data: { role },
+      include: {
+        company: {
+          select: {
+            id: true,
+            name: true,
+            slug: true,
+          },
+        },
+      },
+    })
+  }
+
+  /**
+   * Remove user from a company
+   */
+  async removeUserFromCompany(userId: number, companyId: number) {
+    const companyUser = await prisma.companyUser.findUnique({
+      where: {
+        userId_companyId: {
+          userId,
+          companyId,
+        },
+      },
+    })
+
+    if (!companyUser) {
+      throw new Error('El usuario no pertenece a esta empresa')
+    }
+
+    // Delete the relationship
+    await prisma.companyUser.delete({
+      where: {
+        userId_companyId: {
+          userId,
+          companyId,
+        },
+      },
+    })
+
+    // If this was the user's active company, clear it
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      include: {
+        companies: true,
+      },
+    })
+
+    if (user && user.activeCompanyId === companyId) {
+      const newActiveCompanyId = user.companies[0]?.companyId || null
+      await prisma.user.update({
+        where: { id: userId },
+        data: { activeCompanyId: newActiveCompanyId },
+      })
+    }
+
+    return { success: true }
+  }
+
+  /**
+   * Reset user password in Supabase Auth
+   */
+  async resetPassword(id: number, newPassword: string) {
+    const user = await prisma.user.findUnique({
+      where: { id },
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        supabaseUserId: true,
+      },
+    })
+
+    if (!user) {
+      throw new Error('Usuario no encontrado')
+    }
+
+    if (!user.supabaseUserId) {
+      throw new Error('Este usuario no tiene una cuenta de Supabase asociada')
+    }
+
+    // Update password in Supabase Auth
+    const { error } = await supabaseAdmin.auth.admin.updateUserById(
+      user.supabaseUserId,
+      { password: newPassword }
+    )
+
+    if (error) {
+      throw new Error(`Error al actualizar contraseña en Supabase: ${error.message}`)
+    }
+
+    return {
+      id: user.id,
+      email: user.email,
+      name: user.name,
+    }
   }
 
   /**

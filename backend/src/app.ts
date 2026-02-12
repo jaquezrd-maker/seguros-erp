@@ -3,6 +3,12 @@ import cors from 'cors'
 import helmet from 'helmet'
 import rateLimit from 'express-rate-limit'
 import { errorHandler } from './middleware/errorHandler.middleware'
+import { initializeTenantMiddleware } from './middleware/tenant-isolation.middleware'
+import { cleanupTenantContext } from './middleware/auth.middleware'
+
+// Initialize Prisma tenant isolation middleware BEFORE creating Express app
+// This registers the Prisma middleware that will auto-filter queries
+initializeTenantMiddleware()
 
 // Route imports
 import authRoutes from './modules/auth/auth.routes'
@@ -23,6 +29,8 @@ import taskRoutes from './modules/tasks/tasks.routes'
 import testRoutes from './routes/test.routes'
 import clientPortalRoutes from './modules/client-portal/client-portal.routes'
 import portalDataRoutes from './modules/client-portal-data/portal-data.routes'
+import companiesRoutes from './modules/companies/companies.routes'
+import permissionsRoutes from './modules/permissions/permissions.routes'
 
 const app = express()
 
@@ -65,7 +73,7 @@ app.use(cors({
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Company-Id'],
   exposedHeaders: ['Content-Length', 'X-JSON'],
   maxAge: 86400, // 24 hours
 }))
@@ -73,16 +81,19 @@ app.use(cors({
 // Handle OPTIONS preflight requests explicitly
 app.options('*', cors())
 
-// Rate limiting
+// Rate limiting - generous limits for development
 app.use(rateLimit({
-  windowMs: 60 * 1000,
-  max: 100,
+  windowMs: 60 * 1000, // 1 minute
+  max: 1000, // increased from 100 to 1000 requests per minute
   standardHeaders: true,
   legacyHeaders: false,
 }))
 
 // Body parsing
 app.use(express.json({ limit: '10mb' }))
+
+// Tenant context cleanup (clear after each request completes)
+app.use(cleanupTenantContext)
 
 // Health check
 app.get('/api/health', (_req, res) => {
@@ -91,6 +102,7 @@ app.get('/api/health', (_req, res) => {
 
 // Routes
 app.use('/api/auth', authRoutes)
+app.use('/api/companies', companiesRoutes)
 app.use('/api/client-portal', clientPortalRoutes)
 app.use('/api/client-portal-data', portalDataRoutes)
 app.use('/api/clients', clientRoutes)
@@ -107,6 +119,7 @@ app.use('/api/notifications', notificationRoutes)
 app.use('/api/ai', aiRoutes)
 app.use('/api/events', eventRoutes)
 app.use('/api/tasks', taskRoutes)
+app.use('/api/permissions', permissionsRoutes)
 app.use('/api/test', testRoutes)
 
 // Error handler (must be last)

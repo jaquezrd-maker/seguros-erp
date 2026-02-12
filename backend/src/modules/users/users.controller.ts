@@ -128,6 +128,28 @@ export class UsersController {
     }
   }
 
+  async resetPassword(req: Request, res: Response) {
+    try {
+      const id = Number(req.params.id)
+      const { password } = req.body
+
+      const user = await usersService.resetPassword(id, password)
+
+      return res.status(200).json({
+        success: true,
+        data: user,
+        message: 'Contraseña actualizada exitosamente',
+      })
+    } catch (error: any) {
+      const message = error.message || 'Error al resetear contraseña'
+      const status = message.includes('no encontrado') ? 404 : 500
+      return res.status(status).json({
+        success: false,
+        message,
+      })
+    }
+  }
+
   async cleanOrphaned(req: Request, res: Response) {
     try {
       const result = await usersService.cleanOrphanedSupabaseUsers()
@@ -141,6 +163,90 @@ export class UsersController {
       return res.status(500).json({
         success: false,
         message: error.message || 'Error limpiando usuarios huérfanos',
+      })
+    }
+  }
+
+  async getUserCompanies(req: Request, res: Response) {
+    try {
+      const userId = Number(req.params.id)
+      const companies = await usersService.getUserCompanies(userId)
+
+      return res.status(200).json({
+        success: true,
+        data: companies,
+      })
+    } catch (error: any) {
+      const status = error.message === 'Usuario no encontrado' ? 404 : 500
+      return res.status(status).json({
+        success: false,
+        message: error.message || 'Error al obtener empresas del usuario',
+      })
+    }
+  }
+
+  async addUserToCompany(req: Request, res: Response) {
+    try {
+      const userId = Number(req.params.id)
+      const { companyId, role } = req.body
+
+      const companyUser = await usersService.addUserToCompany(userId, companyId, role)
+
+      return res.status(201).json({
+        success: true,
+        data: companyUser,
+        message: 'Usuario agregado a la empresa exitosamente',
+      })
+    } catch (error: any) {
+      const message = error.message || 'Error al agregar usuario a la empresa'
+      const status = message.includes('no encontrad') ? 404 : message.includes('ya pertenece') ? 409 : 500
+      return res.status(status).json({
+        success: false,
+        message,
+      })
+    }
+  }
+
+  async updateUserCompanyRole(req: Request, res: Response) {
+    try {
+      const userId = Number(req.params.id)
+      const companyId = Number(req.params.companyId)
+      const { role } = req.body
+
+      const companyUser = await usersService.updateUserCompanyRole(userId, companyId, role)
+
+      return res.status(200).json({
+        success: true,
+        data: companyUser,
+        message: 'Rol actualizado exitosamente',
+      })
+    } catch (error: any) {
+      const message = error.message || 'Error al actualizar rol'
+      const status = message.includes('no pertenece') ? 404 : 500
+      return res.status(status).json({
+        success: false,
+        message,
+      })
+    }
+  }
+
+  async removeUserFromCompany(req: Request, res: Response) {
+    try {
+      const userId = Number(req.params.id)
+      const companyId = Number(req.params.companyId)
+
+      await usersService.removeUserFromCompany(userId, companyId)
+
+      return res.status(200).json({
+        success: true,
+        message: 'Usuario removido de la empresa exitosamente',
+      })
+    } catch (error: any) {
+      const message = error.message || 'Error al remover usuario de la empresa'
+      const status = message.includes('no pertenece') ? 404 : 500
+      return res.status(status).json({
+        success: false,
+        message,
       })
     }
   }
