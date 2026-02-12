@@ -11,6 +11,7 @@ const statusMap: Record<string, string> = {
   en_proceso: "bg-blue-500/15 text-blue-400 border-blue-500/30",
   en_revision: "bg-indigo-500/15 text-indigo-400 border-indigo-500/30",
   en_renovacion: "bg-indigo-500/15 text-indigo-400 border-indigo-500/30",
+  trial: "bg-purple-500/15 text-purple-400 border-purple-500/30",
   suspendido: "bg-orange-500/15 text-orange-400 border-orange-500/30",
   inactivo: "bg-slate-500/15 text-slate-400 border-slate-500/30",
   inactiva: "bg-slate-500/15 text-slate-400 border-slate-500/30",
@@ -30,6 +31,14 @@ const statusMap: Record<string, string> = {
 }
 
 export default function StatusBadge({ status }: { status: string }) {
+  if (!status) {
+    return (
+      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border capitalize bg-slate-500/15 text-slate-400 border-slate-500/30">
+        desconocido
+      </span>
+    )
+  }
+
   const key = status.toLowerCase().replace(/ /g, "_")
   const label = key.replace(/_/g, " ")
   return (

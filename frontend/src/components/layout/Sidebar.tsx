@@ -1,6 +1,7 @@
-import { Home, Users, Building2, Shield, RefreshCw, AlertTriangle, CreditCard, DollarSign, Lock, BarChart3, Menu, Bell, Brain } from "lucide-react"
+import { Home, Users, Building2, Shield, RefreshCw, AlertTriangle, CreditCard, DollarSign, Lock, BarChart3, Menu, Bell, Brain, Briefcase, Settings } from "lucide-react"
+import { useAuthStore } from "../../store/authStore"
 
-const menuItems = [
+const baseMenuItems = [
   { id: "dashboard", label: "Dashboard", icon: Home },
   { id: "ai", label: "Asistente IA", icon: Brain },
   { id: "clients", label: "Clientes", icon: Users },
@@ -15,6 +16,11 @@ const menuItems = [
   { id: "notifications", label: "Notificaciones", icon: Bell },
 ]
 
+const superAdminItems = [
+  { id: "companies", label: "Empresas", icon: Briefcase },
+  { id: "permissions", label: "Permisos", icon: Settings },
+]
+
 interface SidebarProps {
   active: string
   setActive: (id: string) => void
@@ -25,6 +31,14 @@ interface SidebarProps {
 }
 
 export default function Sidebar({ active, setActive, collapsed, setCollapsed, mobileMenuOpen, setMobileMenuOpen }: SidebarProps) {
+  const { user } = useAuthStore()
+
+  // Build menu items based on user role
+  const menuItems = [...baseMenuItems]
+  if (user?.globalRole === 'SUPER_ADMIN') {
+    menuItems.push(...superAdminItems)
+  }
+
   return (
     <>
       {/* Backdrop overlay for mobile */}

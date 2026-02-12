@@ -14,6 +14,8 @@ import UsersPage from "../users/UsersPage"
 import ReportsPage from "../reports/ReportsPage"
 import NotificationManager from "../notifications/NotificationManager"
 import AIAssistantPage from "../ai/AIAssistantPage"
+import CompaniesPage from "../companies/CompaniesPage"
+import PermissionsPage from "../permissions/PermissionsPage"
 
 const titles: Record<string, string> = {
   dashboard: "Dashboard",
@@ -28,6 +30,8 @@ const titles: Record<string, string> = {
   reports: "Reportes",
   notifications: "Notificaciones",
   ai: "Asistente IA",
+  companies: "Empresas",
+  permissions: "Permisos",
 }
 
 export default function InsuranceERP() {
@@ -53,6 +57,8 @@ export default function InsuranceERP() {
       case "reports": return <ReportsPage />
       case "notifications": return <NotificationManager />
       case "ai": return <AIAssistantPage />
+      case "companies": return <CompaniesPage />
+      case "permissions": return <PermissionsPage />
       default: return <DashboardPage />
     }
   }

@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react"
-import { Plus, Check, X, Trash2, Calendar, AlertCircle, Edit2 } from "lucide-react"
+import { Plus, Check, X, Trash2, Calendar, AlertCircle, Edit2, Building2 } from "lucide-react"
 import { api } from "../../api/client"
+import { useAuthStore } from "../../store/authStore"
 
 interface Task {
   id: number
@@ -27,6 +28,11 @@ const priorityLabels = {
 }
 
 export default function TodoList() {
+  const { user } = useAuthStore()
+  const activeCompanyId = user?.companyId
+  const isSuperAdmin = user?.globalRole === 'SUPER_ADMIN'
+  const isGlobalView = isSuperAdmin && !activeCompanyId
+
   const [tasks, setTasks] = useState<Task[]>([])
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
@@ -198,18 +204,34 @@ export default function TodoList() {
     <div className="bg-slate-800/50 backdrop-blur-xl rounded-2xl border border-slate-700/50 p-5">
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-sm font-semibold text-white">Lista de Tareas</h3>
-        <button
-          onClick={() => {
-            setShowForm(!showForm)
-            if (editingTask) cancelEditing()
-          }}
-          className="p-1.5 rounded-lg bg-teal-600 hover:bg-teal-500 text-white transition-colors"
-        >
-          {showForm || editingTask ? <X size={16} /> : <Plus size={16} />}
-        </button>
+        {!isGlobalView && (
+          <button
+            onClick={() => {
+              setShowForm(!showForm)
+              if (editingTask) cancelEditing()
+            }}
+            className="p-1.5 rounded-lg bg-teal-600 hover:bg-teal-500 text-white transition-colors"
+          >
+            {showForm || editingTask ? <X size={16} /> : <Plus size={16} />}
+          </button>
+        )}
       </div>
 
-      {(showForm || editingTask) && (
+      {isGlobalView && (
+        <div className="mb-4 p-3 bg-purple-500/10 border border-purple-500/20 rounded-xl">
+          <div className="flex items-start gap-2 text-purple-300">
+            <Building2 size={16} className="mt-0.5 flex-shrink-0" />
+            <div className="text-xs">
+              <p className="font-medium mb-1">Vista Global Activa</p>
+              <p className="text-purple-400/80">
+                Las tareas pertenecen a empresas específicas. Para crear o ver tareas, selecciona una empresa desde el menú superior.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {!isGlobalView && (showForm || editingTask) && (
         <div className="mb-4 p-3 bg-slate-700/50 rounded-xl space-y-2">
           {editingTask && (
             <div className="flex items-center gap-2 mb-2 text-xs text-teal-400">
@@ -271,7 +293,11 @@ export default function TodoList() {
 
       <div className="space-y-2 max-h-96 overflow-y-auto">
         {/* Pending Tasks */}
-        {pendingTasks.length === 0 && completedTasks.length === 0 ? (
+        {isGlobalView ? (
+          <p className="text-slate-500 text-sm text-center py-8">
+            Selecciona una empresa para ver sus tareas
+          </p>
+        ) : pendingTasks.length === 0 && completedTasks.length === 0 ? (
           <p className="text-slate-500 text-sm text-center py-4">No hay tareas</p>
         ) : (
           <>

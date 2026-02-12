@@ -52,7 +52,7 @@ export default function UsersPage() {
   const [passwordError, setPasswordError] = useState("")
   const [resettingPassword, setResettingPassword] = useState(false)
 
-  const isSuperAdmin = currentUser?.globalRole === "SUPER_ADMIN"
+  const isSuperAdmin = (currentUser?.globalRole || currentUser?.role) === "SUPER_ADMIN"
 
   console.log('[UsersPage] currentUser:', currentUser)
   console.log('[UsersPage] isSuperAdmin:', isSuperAdmin)
@@ -146,20 +146,10 @@ export default function UsersPage() {
   const handleSave = async () => {
     if (crud.modal === "create") {
       // Create user first
-      const newUser = await crud.createItem()
+      await crud.createItem()
 
       // If SUPER_ADMIN and company is selected, assign user to company
-      if (isSuperAdmin && newUserCompanyId && newUser && (newUser as any).data?.id) {
-        try {
-          await api.post(`/users/${(newUser as any).data.id}/companies`, {
-            companyId: newUserCompanyId,
-            role: newUserCompanyRole,
-          })
-        } catch (error: any) {
-          console.error('Error assigning company to user:', error)
-          alert(`Usuario creado pero no se pudo asignar a la empresa: ${error.message}`)
-        }
-      }
+      // Note: User assignment to company can be done after creation via the view modal
 
       // Reset company selection
       setNewUserCompanyId(null)

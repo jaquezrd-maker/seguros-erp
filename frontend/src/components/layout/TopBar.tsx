@@ -1,9 +1,11 @@
-import { Bell, LogOut, X, Sun, Moon, Menu } from "lucide-react"
+import { Bell, LogOut, X, Sun, Moon, Menu, Building2 } from "lucide-react"
 import { useAuth } from "../../context/AuthContext"
 import { useTheme } from "../../context/ThemeContext"
 import { useState, useEffect } from "react"
 import { api } from "../../api/client"
 import { fmtDate } from "../../utils/format"
+import { CompanySelector } from "./CompanySelector"
+import { useAuthStore } from "../../store/authStore"
 
 interface TopBarProps {
   title: string
@@ -30,6 +32,9 @@ interface Payment {
 export default function TopBar({ title, collapsed, userName = "Usuario", userRole = "Usuario", onMenuClick }: TopBarProps) {
   const { signOut } = useAuth()
   const { theme, toggleTheme } = useTheme()
+  const { user, getActiveCompany } = useAuthStore()
+  const activeCompany = getActiveCompany()
+  const isSuperAdmin = user?.globalRole === 'SUPER_ADMIN'
   const initials = userName.split(" ").map(n => n[0]).slice(0, 2).join("").toUpperCase()
   const [showNotifications, setShowNotifications] = useState(false)
   const [renewals, setRenewals] = useState<Renewal[]>([])
@@ -58,7 +63,28 @@ export default function TopBar({ title, collapsed, userName = "Usuario", userRol
         >
           <Menu size={20} />
         </button>
-        <h2 className="text-base md:text-lg font-semibold text-white truncate">{title}</h2>
+        <div className="flex items-center gap-3">
+          <h2 className="text-base md:text-lg font-semibold text-white truncate">{title}</h2>
+          {/* Company Badge */}
+          {activeCompany && !isSuperAdmin && (
+            <div className="hidden md:flex items-center gap-1.5 px-3 py-1 bg-teal-500/10 border border-teal-500/20 rounded-lg">
+              <Building2 className="w-3.5 h-3.5 text-teal-400" />
+              <span className="text-xs font-medium text-teal-300">{activeCompany.name}</span>
+            </div>
+          )}
+          {isSuperAdmin && !activeCompany && (
+            <div className="hidden md:flex items-center gap-1.5 px-3 py-1 bg-purple-500/10 border border-purple-500/20 rounded-lg">
+              <Building2 className="w-3.5 h-3.5 text-purple-400" />
+              <span className="text-xs font-medium text-purple-300">Vista Global</span>
+            </div>
+          )}
+          {isSuperAdmin && activeCompany && (
+            <div className="hidden md:flex items-center gap-1.5 px-3 py-1 bg-teal-500/10 border border-teal-500/20 rounded-lg">
+              <Building2 className="w-3.5 h-3.5 text-teal-400" />
+              <span className="text-xs font-medium text-teal-300">{activeCompany.name}</span>
+            </div>
+          )}
+        </div>
       </div>
       <div className="flex items-center gap-3">
         <div className="relative">
@@ -112,6 +138,10 @@ export default function TopBar({ title, collapsed, userName = "Usuario", userRol
             </div>
           )}
         </div>
+
+        {/* Company Selector for multi-tenant users */}
+        <CompanySelector />
+
         <button
           onClick={toggleTheme}
           className="hidden sm:flex p-2 rounded-xl hover:bg-slate-800 text-slate-400 hover:text-white transition-colors items-center"

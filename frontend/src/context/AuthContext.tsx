@@ -2,6 +2,7 @@ import { createContext, useContext, useEffect, useState, type ReactNode } from '
 import { supabase } from '../lib/supabase'
 import type { User, Session } from '@supabase/supabase-js'
 import { api } from '../api/client'
+import { useAuthStore, type AuthUser, type CompanyAccess } from '../store/authStore'
 
 interface DBUser {
   id: number
@@ -10,6 +11,9 @@ interface DBUser {
   role: string
   status: string
   forcePasswordChange: boolean
+  globalRole?: string
+  companyId?: number
+  companies?: CompanyAccess[]
 }
 
 interface AuthState {
@@ -45,10 +49,37 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const fetchDbUser = async () => {
     try {
       const response = await api.get<{ success: boolean; data: DBUser }>('/auth/me')
-      setDbUser(response.data)
+      const dbUserData = response.data
+      setDbUser(dbUserData)
+
+      // Sync with authStore for multi-tenant context
+      if (dbUserData) {
+        const authUser: AuthUser = {
+          id: dbUserData.id,
+          email: dbUserData.email,
+          name: dbUserData.name,
+          role: dbUserData.role,
+          globalRole: dbUserData.globalRole || dbUserData.role,
+          supabaseUserId: user?.id || '',
+          companyId: dbUserData.companyId,
+          companies: dbUserData.companies || [],
+        }
+
+        // CRITICAL: Always use the companyId from backend, not from localStorage
+        // This ensures the activeCompanyId is always in sync after company switches
+        const store = useAuthStore.getState()
+        store.setUser(authUser)
+
+        // Force update activeCompanyId from backend
+        if (dbUserData.companyId !== store.activeCompanyId) {
+          console.log(`[AUTH] Syncing companyId: ${store.activeCompanyId} -> ${dbUserData.companyId}`)
+          store.setActiveCompany(dbUserData.companyId || 0)
+        }
+      }
     } catch (error: any) {
       console.error('Error fetching database user:', error)
       setDbUser(null)
+      useAuthStore.getState().logout()
 
       // Si el error es 401 (token inválido/expirado), limpiar la sesión de Supabase
       if (error?.status === 401 || error?.response?.status === 401) {
@@ -119,6 +150,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const { error } = await supabase.auth.signOut()
     if (error) throw error
     setDbUser(null)
+    useAuthStore.getState().logout()
   }
 
   const refreshDbUser = async () => {
