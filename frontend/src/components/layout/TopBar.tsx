@@ -4,8 +4,8 @@ import { useTheme } from "../../context/ThemeContext"
 import { useState, useEffect } from "react"
 import { api } from "../../api/client"
 import { fmtDate } from "../../utils/format"
-import { CompanySelector } from "./CompanySelector"
-import { useAuthStore } from "../../store/authStore"
+// import { CompanySelector } from "./CompanySelector" // TODO: Multi-tenant feature
+// import { useAuthStore } from "../../store/authStore" // TODO: Multi-tenant feature
 
 interface TopBarProps {
   title: string
@@ -32,9 +32,9 @@ interface Payment {
 export default function TopBar({ title, collapsed, userName = "Usuario", userRole = "Usuario", onMenuClick }: TopBarProps) {
   const { signOut } = useAuth()
   const { theme, toggleTheme } = useTheme()
-  const { user, getActiveCompany } = useAuthStore()
-  const activeCompany = getActiveCompany()
-  const isSuperAdmin = user?.globalRole === 'SUPER_ADMIN'
+  // const { user, getActiveCompany } = useAuthStore() // TODO: Multi-tenant feature
+  // const activeCompany = getActiveCompany() // TODO: Multi-tenant feature
+  // const isSuperAdmin = user?.globalRole === 'SUPER_ADMIN' // TODO: Multi-tenant feature
   const initials = userName.split(" ").map(n => n[0]).slice(0, 2).join("").toUpperCase()
   const [showNotifications, setShowNotifications] = useState(false)
   const [renewals, setRenewals] = useState<Renewal[]>([])
@@ -65,25 +65,7 @@ export default function TopBar({ title, collapsed, userName = "Usuario", userRol
         </button>
         <div className="flex items-center gap-3">
           <h2 className="text-base md:text-lg font-semibold text-white truncate">{title}</h2>
-          {/* Company Badge */}
-          {activeCompany && !isSuperAdmin && (
-            <div className="hidden md:flex items-center gap-1.5 px-3 py-1 bg-teal-500/10 border border-teal-500/20 rounded-lg">
-              <Building2 className="w-3.5 h-3.5 text-teal-400" />
-              <span className="text-xs font-medium text-teal-300">{activeCompany.name}</span>
-            </div>
-          )}
-          {isSuperAdmin && !activeCompany && (
-            <div className="hidden md:flex items-center gap-1.5 px-3 py-1 bg-purple-500/10 border border-purple-500/20 rounded-lg">
-              <Building2 className="w-3.5 h-3.5 text-purple-400" />
-              <span className="text-xs font-medium text-purple-300">Vista Global</span>
-            </div>
-          )}
-          {isSuperAdmin && activeCompany && (
-            <div className="hidden md:flex items-center gap-1.5 px-3 py-1 bg-teal-500/10 border border-teal-500/20 rounded-lg">
-              <Building2 className="w-3.5 h-3.5 text-teal-400" />
-              <span className="text-xs font-medium text-teal-300">{activeCompany.name}</span>
-            </div>
-          )}
+          {/* Company Badge - TODO: Multi-tenant feature */}
         </div>
       </div>
       <div className="flex items-center gap-3">
@@ -139,8 +121,8 @@ export default function TopBar({ title, collapsed, userName = "Usuario", userRol
           )}
         </div>
 
-        {/* Company Selector for multi-tenant users */}
-        <CompanySelector />
+        {/* Company Selector for multi-tenant users - TODO: Multi-tenant feature */}
+        {/* <CompanySelector /> */}
 
         <button
           onClick={toggleTheme}

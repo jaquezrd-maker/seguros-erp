@@ -17,8 +17,8 @@ const baseMenuItems = [
 ]
 
 const superAdminItems = [
-  { id: "companies", label: "Empresas", icon: Briefcase },
-  { id: "permissions", label: "Permisos", icon: Settings },
+  // { id: "companies", label: "Empresas", icon: Briefcase }, // TODO: Multi-tenant feature
+  // { id: "permissions", label: "Permisos", icon: Settings }, // TODO: Multi-tenant feature
 ]
 
 interface SidebarProps {
