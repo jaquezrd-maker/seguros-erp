@@ -1,3 +1,6 @@
+// Load environment variables first
+import 'dotenv/config'
+
 export default async function handler(req: any, res: any) {
   try {
     console.log('[API] Loading Express app...')
