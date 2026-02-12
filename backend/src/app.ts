@@ -29,8 +29,8 @@ import taskRoutes from './modules/tasks/tasks.routes'
 import testRoutes from './routes/test.routes'
 import clientPortalRoutes from './modules/client-portal/client-portal.routes'
 import portalDataRoutes from './modules/client-portal-data/portal-data.routes'
-import companiesRoutes from './modules/companies/companies.routes'
-import permissionsRoutes from './modules/permissions/permissions.routes'
+// import companiesRoutes from './modules/companies/companies.routes' // TODO: Multi-tenant feature
+// import permissionsRoutes from './modules/permissions/permissions.routes' // TODO: Multi-tenant feature
 
 const app = express()
 
@@ -104,7 +104,7 @@ app.get('/api/health', (_req, res) => {
 
 // Routes
 app.use('/api/auth', authRoutes)
-app.use('/api/companies', companiesRoutes)
+// app.use('/api/companies', companiesRoutes) // TODO: Multi-tenant feature
 app.use('/api/client-portal', clientPortalRoutes)
 app.use('/api/client-portal-data', portalDataRoutes)
 app.use('/api/clients', clientRoutes)
@@ -121,7 +121,7 @@ app.use('/api/notifications', notificationRoutes)
 app.use('/api/ai', aiRoutes)
 app.use('/api/events', eventRoutes)
 app.use('/api/tasks', taskRoutes)
-app.use('/api/permissions', permissionsRoutes)
+// app.use('/api/permissions', permissionsRoutes) // TODO: Multi-tenant feature
 app.use('/api/test', testRoutes)
 
 // Error handler (must be last)
