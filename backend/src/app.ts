@@ -3,12 +3,12 @@ import cors from 'cors'
 import helmet from 'helmet'
 import rateLimit from 'express-rate-limit'
 import { errorHandler } from './middleware/errorHandler.middleware'
-import { initializeTenantMiddleware } from './middleware/tenant-isolation.middleware'
-import { cleanupTenantContext } from './middleware/auth.middleware'
+// import { initializeTenantMiddleware } from './middleware/tenant-isolation.middleware'
+// import { cleanupTenantContext } from './middleware/auth.middleware'
 
 // Initialize Prisma tenant isolation middleware BEFORE creating Express app
 // This registers the Prisma middleware that will auto-filter queries
-initializeTenantMiddleware()
+// initializeTenantMiddleware() // TODO: Uncomment when multi-tenant is ready
 
 // Route imports
 import authRoutes from './modules/auth/auth.routes'
@@ -95,7 +95,7 @@ app.use(rateLimit({
 app.use(express.json({ limit: '10mb' }))
 
 // Tenant context cleanup (clear after each request completes)
-app.use(cleanupTenantContext)
+// app.use(cleanupTenantContext) // TODO: Uncomment when multi-tenant is ready
 
 // Health check
 app.get('/api/health', (_req, res) => {
