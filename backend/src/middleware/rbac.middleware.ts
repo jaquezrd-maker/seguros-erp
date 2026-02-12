@@ -7,6 +7,11 @@ export function rbacMiddleware(allowedRoles: UserRole[]) {
       return res.status(401).json({ success: false, message: 'No autenticado' })
     }
 
+    // SUPER_ADMIN has access to everything
+    if (req.user.role === 'SUPER_ADMIN') {
+      return next()
+    }
+
     if (!allowedRoles.includes(req.user.role)) {
       console.log(`[RBAC] Access denied - User: ${req.user.email}, Role: ${req.user.role}, Allowed roles: ${allowedRoles.join(', ')}, Path: ${req.path}`)
       return res.status(403).json({ success: false, message: 'No tiene permisos para esta acción' })
