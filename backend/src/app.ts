@@ -3,12 +3,12 @@ import cors from 'cors'
 import helmet from 'helmet'
 import rateLimit from 'express-rate-limit'
 import { errorHandler } from './middleware/errorHandler.middleware'
-// import { initializeTenantMiddleware } from './middleware/tenant-isolation.middleware'
-// import { cleanupTenantContext } from './middleware/auth.middleware'
+import { initializeTenantMiddleware } from './middleware/tenant-isolation.middleware'
+import { cleanupTenantContext } from './middleware/auth.middleware'
 
 // Initialize Prisma tenant isolation middleware BEFORE creating Express app
 // This registers the Prisma middleware that will auto-filter queries
-// initializeTenantMiddleware() // TODO: Uncomment when multi-tenant is ready
+initializeTenantMiddleware()
 
 // Route imports
 import authRoutes from './modules/auth/auth.routes'
@@ -29,8 +29,8 @@ import taskRoutes from './modules/tasks/tasks.routes'
 import testRoutes from './routes/test.routes'
 import clientPortalRoutes from './modules/client-portal/client-portal.routes'
 import portalDataRoutes from './modules/client-portal-data/portal-data.routes'
-// import companiesRoutes from './modules/companies/companies.routes' // TODO: Multi-tenant feature
-// import permissionsRoutes from './modules/permissions/permissions.routes' // TODO: Multi-tenant feature
+import companiesRoutes from './modules/companies/companies.routes'
+import permissionsRoutes from './modules/permissions/permissions.routes'
 
 const app = express()
 
@@ -95,7 +95,7 @@ app.use(rateLimit({
 app.use(express.json({ limit: '10mb' }))
 
 // Tenant context cleanup (clear after each request completes)
-// app.use(cleanupTenantContext) // TODO: Uncomment when multi-tenant is ready
+app.use(cleanupTenantContext)
 
 // Health check
 app.get('/api/health', (_req, res) => {
@@ -104,7 +104,7 @@ app.get('/api/health', (_req, res) => {
 
 // Routes
 app.use('/api/auth', authRoutes)
-// app.use('/api/companies', companiesRoutes) // TODO: Multi-tenant feature
+app.use('/api/companies', companiesRoutes)
 app.use('/api/client-portal', clientPortalRoutes)
 app.use('/api/client-portal-data', portalDataRoutes)
 app.use('/api/clients', clientRoutes)
@@ -121,7 +121,7 @@ app.use('/api/notifications', notificationRoutes)
 app.use('/api/ai', aiRoutes)
 app.use('/api/events', eventRoutes)
 app.use('/api/tasks', taskRoutes)
-// app.use('/api/permissions', permissionsRoutes) // TODO: Multi-tenant feature
+app.use('/api/permissions', permissionsRoutes)
 app.use('/api/test', testRoutes)
 
 // Error handler (must be last)

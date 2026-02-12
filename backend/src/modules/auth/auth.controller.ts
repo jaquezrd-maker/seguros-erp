@@ -115,4 +115,31 @@ export class AuthController {
       })
     }
   }
+
+  async switchCompany(req: Request, res: Response) {
+    try {
+      const userId = req.user?.id
+      const { companyId } = req.body
+
+      if (!userId) {
+        return res.status(401).json({
+          success: false,
+          message: 'No autenticado',
+        })
+      }
+
+      await authService.switchCompany(userId, companyId)
+
+      return res.status(200).json({
+        success: true,
+        message: 'Empresa cambiada exitosamente',
+      })
+    } catch (error: any) {
+      const status = error.message.includes('no tiene acceso') ? 403 : 500
+      return res.status(status).json({
+        success: false,
+        message: error.message || 'Error al cambiar de empresa',
+      })
+    }
+  }
 }

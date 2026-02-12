@@ -12,5 +12,6 @@ router.post('/login', loginLimiter, controller.login)
 router.post('/register', controller.register)
 router.get('/me', authMiddleware, controller.me)
 router.post('/logout', authMiddleware, controller.logout)
+router.post('/switch-company', authMiddleware, controller.switchCompany)
 
 export default router

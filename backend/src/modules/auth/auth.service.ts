@@ -113,6 +113,21 @@ export class AuthService {
   async me(supabaseUserId: string) {
     const user = await prisma.user.findUnique({
       where: { supabaseUserId },
+      include: {
+        companies: {
+          where: { isActive: true },
+          include: {
+            company: {
+              select: {
+                id: true,
+                name: true,
+                slug: true,
+                status: true,
+              },
+            },
+          },
+        },
+      },
     })
 
     if (!user) {
@@ -124,11 +139,59 @@ export class AuthService {
       email: user.email,
       name: user.name,
       role: user.role,
+      globalRole: user.role, // Global role
       phone: user.phone,
       status: user.status,
       lastLogin: user.lastLogin,
       createdAt: user.createdAt,
+      companyId: user.activeCompanyId,
+      companies: user.companies.map(cu => ({
+        id: cu.companyId,
+        name: cu.company.name,
+        slug: cu.company.slug,
+        role: cu.role,
+        status: cu.company.status,
+      })),
     }
+  }
+
+  async switchCompany(userId: number, companyId: number | null) {
+    // Verify user exists
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      include: {
+        companies: {
+          where: { isActive: true },
+        },
+      },
+    })
+
+    if (!user) {
+      throw new Error('Usuario no encontrado')
+    }
+
+    // If companyId is null, only SUPER_ADMIN can do this
+    if (companyId === null) {
+      if (user.role !== 'SUPER_ADMIN') {
+        throw new Error('Solo SUPER_ADMIN puede cambiar a modo sin empresa')
+      }
+    } else {
+      // Regular users must have access to the company
+      if (user.role !== 'SUPER_ADMIN') {
+        const hasAccess = user.companies.some(cu => cu.companyId === companyId)
+        if (!hasAccess) {
+          throw new Error('Usuario no tiene acceso a la empresa solicitada')
+        }
+      }
+    }
+
+    // Update activeCompanyId
+    await prisma.user.update({
+      where: { id: userId },
+      data: { activeCompanyId: companyId },
+    })
+
+    return { success: true }
   }
 
   async logout(accessToken: string) {

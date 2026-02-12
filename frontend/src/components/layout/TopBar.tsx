@@ -4,8 +4,8 @@ import { useTheme } from "../../context/ThemeContext"
 import { useState, useEffect } from "react"
 import { api } from "../../api/client"
 import { fmtDate } from "../../utils/format"
-// import { CompanySelector } from "./CompanySelector" // TODO: Multi-tenant feature
-// import { useAuthStore } from "../../store/authStore" // TODO: Multi-tenant feature
+import { CompanySelector } from "./CompanySelector"
+import { useAuthStore } from "../../store/authStore"
 
 interface TopBarProps {
   title: string
@@ -32,9 +32,9 @@ interface Payment {
 export default function TopBar({ title, collapsed, userName = "Usuario", userRole = "Usuario", onMenuClick }: TopBarProps) {
   const { signOut } = useAuth()
   const { theme, toggleTheme } = useTheme()
-  // const { user, getActiveCompany } = useAuthStore() // TODO: Multi-tenant feature
-  // const activeCompany = getActiveCompany() // TODO: Multi-tenant feature
-  // const isSuperAdmin = user?.globalRole === 'SUPER_ADMIN' // TODO: Multi-tenant feature
+  const { user, getActiveCompany } = useAuthStore()
+  const activeCompany = getActiveCompany()
+  const isSuperAdmin = user?.globalRole === 'SUPER_ADMIN'
   const initials = userName.split(" ").map(n => n[0]).slice(0, 2).join("").toUpperCase()
   const [showNotifications, setShowNotifications] = useState(false)
   const [renewals, setRenewals] = useState<Renewal[]>([])
@@ -65,7 +65,11 @@ export default function TopBar({ title, collapsed, userName = "Usuario", userRol
         </button>
         <div className="flex items-center gap-3">
           <h2 className="text-base md:text-lg font-semibold text-white truncate">{title}</h2>
-          {/* Company Badge - TODO: Multi-tenant feature */}
+          {activeCompany && (
+            <span className="hidden md:inline-flex px-2 py-1 text-xs font-medium bg-teal-500/20 text-teal-300 rounded-md border border-teal-500/30">
+              {activeCompany.name}
+            </span>
+          )}
         </div>
       </div>
       <div className="flex items-center gap-3">
@@ -121,8 +125,8 @@ export default function TopBar({ title, collapsed, userName = "Usuario", userRol
           )}
         </div>
 
-        {/* Company Selector for multi-tenant users - TODO: Multi-tenant feature */}
-        {/* <CompanySelector /> */}
+        {/* Company Selector for multi-tenant users */}
+        <CompanySelector />
 
         <button
           onClick={toggleTheme}
