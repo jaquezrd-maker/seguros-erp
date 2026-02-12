@@ -40,3 +40,4 @@ coverage/
 # Archivos locales grandes
 DGII_RNC.TXT
 *.pdf
+VERCEL_ENV.md
