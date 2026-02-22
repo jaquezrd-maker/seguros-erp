@@ -1,6 +1,4 @@
-import 'dotenv/config'
-import app from '../src/app'
-
-export default function handler(req: any, res: any) {
+export default async function handler(req: any, res: any) {
+  const { default: app } = await import('../src/app')
   return app(req, res)
 }
