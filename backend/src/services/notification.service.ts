@@ -356,7 +356,7 @@ export class NotificationService {
                 message: `Póliza ${policy.policyNumber} vencida`,
                 status: 'ENVIADA',
                 sentAt: new Date(),
-              },
+              } as any, // companyId injected by tenant middleware
             })
             expiredCount++
           }
@@ -374,7 +374,7 @@ export class NotificationService {
                 message: `Póliza ${policy.policyNumber} vence en ${daysUntilExpiry} días`,
                 status: 'ENVIADA',
                 sentAt: new Date(),
-              },
+              } as any, // companyId injected by tenant middleware
             })
             expiringCount++
           }

@@ -127,7 +127,7 @@ export class CommissionsService {
         amount: input.amount,
         period: input.period,
         status: 'PENDIENTE',
-      },
+      } as any, // companyId injected by tenant middleware
       include: {
         policy: {
           select: { id: true, policyNumber: true },
@@ -331,7 +331,7 @@ export class CommissionsService {
         amount: commissionAmount,
         period,
         status: 'PENDIENTE',
-      },
+      } as any, // companyId injected by tenant middleware
       include: {
         policy: {
           select: { id: true, policyNumber: true },

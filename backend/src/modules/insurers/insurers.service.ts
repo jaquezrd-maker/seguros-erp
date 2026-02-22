@@ -77,8 +77,8 @@ export class InsurersService {
   }
 
   async create(data: Prisma.InsurerCreateInput) {
-    const existing = await prisma.insurer.findUnique({
-      where: { rnc: data.rnc },
+    const existing = await prisma.insurer.findFirst({
+      where: { rnc: data.rnc as string },
     })
 
     if (existing) {

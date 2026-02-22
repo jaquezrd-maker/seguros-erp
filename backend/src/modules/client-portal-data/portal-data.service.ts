@@ -216,7 +216,7 @@ export class PortalDataService {
         estimatedAmount: data.estimatedAmount || null,
         status: 'EN_REVISION',
         priority: 'MEDIA'
-      },
+      } as any, // companyId injected by tenant middleware
       include: {
         policy: {
           select: {

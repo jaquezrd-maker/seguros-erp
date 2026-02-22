@@ -137,8 +137,8 @@ export const clientsService = {
 
   async create(data: Prisma.ClientCreateInput) {
     // Validate unique cedulaRnc
-    const existing = await prisma.client.findUnique({
-      where: { cedulaRnc: data.cedulaRnc },
+    const existing = await prisma.client.findFirst({
+      where: { cedulaRnc: data.cedulaRnc as string },
     })
 
     if (existing) {
@@ -174,7 +174,7 @@ export const clientsService = {
 
     // If updating cedulaRnc, validate uniqueness
     if (data.cedulaRnc && data.cedulaRnc !== client.cedulaRnc) {
-      const existing = await prisma.client.findUnique({
+      const existing = await prisma.client.findFirst({
         where: { cedulaRnc: data.cedulaRnc as string },
       })
 

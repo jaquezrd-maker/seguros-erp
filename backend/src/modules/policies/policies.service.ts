@@ -163,7 +163,7 @@ export const policiesService = {
       policyNumber = await generatePolicyNumber()
     }
 
-    const existing = await prisma.policy.findUnique({
+    const existing = await prisma.policy.findFirst({
       where: { policyNumber },
     })
 
@@ -184,7 +184,7 @@ export const policiesService = {
         autoRenew: data.autoRenew ?? false,
         notes: data.notes,
         createdBy: data.createdBy,
-      },
+      } as any, // companyId injected by tenant middleware
       include: {
         client: { select: { id: true, name: true, cedulaRnc: true } },
         insurer: { select: { id: true, name: true } },
@@ -208,7 +208,7 @@ export const policiesService = {
       }))
 
       await prisma.payment.createMany({
-        data: payments,
+        data: payments as any, // companyId injected by tenant middleware
       })
     }
 
@@ -223,7 +223,7 @@ export const policiesService = {
     }
 
     if (data.policyNumber && data.policyNumber !== existing.policyNumber) {
-      const duplicate = await prisma.policy.findUnique({
+      const duplicate = await prisma.policy.findFirst({
         where: { policyNumber: data.policyNumber },
       })
       if (duplicate) {

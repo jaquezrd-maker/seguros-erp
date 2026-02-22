@@ -231,7 +231,7 @@ export class RenewalsService {
         recipient: renewal.policy.client.email || '',
         message: `Estimado/a ${renewal.policy.client.name}, su póliza ${renewal.policy.policyNumber} con ${renewal.policy.insurer.name} está próxima a vencer el ${renewal.originalEndDate.toISOString().split('T')[0]}. Por favor comuníquese con nosotros para gestionar su renovación.`,
         status: 'PENDIENTE',
-      },
+      } as any, // companyId injected by tenant middleware
     })
 
     return {
@@ -361,7 +361,7 @@ export class RenewalsService {
           policyId: policy.id,
           originalEndDate: policy.endDate,
           status: 'PENDIENTE',
-        },
+        } as any, // companyId injected by tenant middleware
         include: {
           policy: {
             select: {

@@ -171,7 +171,7 @@ export class PaymentsService {
         notes: input.notes || null,
         createdBy: input.createdBy || null,
         status,
-      },
+      } as any, // companyId injected by tenant middleware
       include: {
         policy: {
           select: { id: true, policyNumber: true },

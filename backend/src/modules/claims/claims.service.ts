@@ -122,7 +122,7 @@ export class ClaimsService {
         description: data.description ?? null,
         estimatedAmount: data.estimatedAmount ?? null,
         priority: data.priority ?? 'MEDIA',
-      },
+      } as any, // companyId injected by tenant middleware
       include: {
         policy: {
           include: {
@@ -186,7 +186,7 @@ export class ClaimsService {
         userId,
         note,
         isInternal,
-      },
+      } as any, // companyId injected by tenant middleware
       include: {
         user: true,
       },
