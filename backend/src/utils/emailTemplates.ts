@@ -562,6 +562,83 @@ export function renewalNoticeEmail(data: {
   }
 }
 
+// Quotation Email
+export function quotationEmailTemplate(data: {
+  clientName: string
+  quotationNo: string
+  totalPremium: number
+  currency: string
+  validUntil?: string
+  items: Array<{
+    productName: string
+    insurerName: string
+    planName: string
+    planTier: string
+    premium: number
+  }>
+}): EmailTemplate {
+  const itemsRows = data.items
+    .map(
+      (item) => `
+        <tr>
+          <td>${item.productName}</td>
+          <td>${item.insurerName}</td>
+          <td>${item.planName} (${item.planTier})</td>
+          <td style="text-align:right">${formatCurrency(item.premium)}</td>
+        </tr>`
+    )
+    .join('')
+
+  const content = `
+    <h2>📋 Cotización de Seguros</h2>
+    <p>Estimado/a <strong>${data.clientName}</strong>,</p>
+    <p>Adjunto encontrará la cotización solicitada con las opciones de seguros que hemos preparado para usted.</p>
+
+    <div class="info-box">
+      <table>
+        <tr>
+          <td><strong>No. Cotización:</strong></td>
+          <td>${data.quotationNo}</td>
+        </tr>
+        <tr>
+          <td><strong>Prima Total:</strong></td>
+          <td><strong>${formatCurrency(data.totalPremium)}</strong></td>
+        </tr>
+        ${data.validUntil ? `
+        <tr>
+          <td><strong>Válido Hasta:</strong></td>
+          <td>${formatDate(data.validUntil)}</td>
+        </tr>
+        ` : ''}
+      </table>
+    </div>
+
+    <h3 style="color:#0d9488;margin-top:25px;">Productos Cotizados</h3>
+    <table>
+      <thead>
+        <tr>
+          <th>Producto</th>
+          <th>Aseguradora</th>
+          <th>Plan</th>
+          <th style="text-align:right">Prima</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${itemsRows}
+      </tbody>
+    </table>
+
+    <p style="margin-top:20px;">Si está interesado en alguna de estas opciones o desea más información, no dude en contactarnos. Estaremos encantados de asistirle en la selección del plan que mejor se adapte a sus necesidades.</p>
+
+    <p>Saludos cordiales,<br><strong>Equipo SeguroPro</strong></p>
+  `
+
+  return {
+    subject: `📋 Cotización ${data.quotationNo} - SeguroPro`,
+    html: createEmailTemplate('Cotización de Seguros', content),
+  }
+}
+
 // Generic notification email
 export function genericNotificationEmail(data: {
   recipientName: string

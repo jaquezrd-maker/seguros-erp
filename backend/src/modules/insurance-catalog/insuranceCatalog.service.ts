@@ -100,6 +100,33 @@ class InsuranceCatalogService {
     })
   }
 
+  async createPlan(data: any) {
+    return prisma.insurancePlan.create({
+      data,
+      include: { product: { select: { id: true, name: true } } },
+    })
+  }
+
+  async updatePlan(id: number, data: any) {
+    const { id: _id, createdAt, updatedAt, product, quotationItems, _count, productId, ...updateData } = data
+    return prisma.insurancePlan.update({
+      where: { id },
+      data: updateData,
+      include: { product: { select: { id: true, name: true } } },
+    })
+  }
+
+  async deletePlan(id: number) {
+    const itemCount = await prisma.quotationItem.count({ where: { planId: id } })
+    if (itemCount > 0) {
+      return prisma.insurancePlan.update({
+        where: { id },
+        data: { isActive: false },
+      })
+    }
+    return prisma.insurancePlan.delete({ where: { id } })
+  }
+
   async searchProducts(query: string) {
     return prisma.insuranceProduct.findMany({
       where: {

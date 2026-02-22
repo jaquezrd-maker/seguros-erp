@@ -2,7 +2,7 @@ import { Router } from 'express'
 import quotationsController from './quotations.controller'
 import { authMiddleware } from '../../middleware/auth.middleware'
 import { validate } from '../../middleware/validation.middleware'
-import { createQuotationSchema, updateQuotationSchema, createProposalSchema } from './quotations.validation'
+import { createQuotationSchema, updateQuotationSchema, createProposalSchema, sendQuotationEmailSchema } from './quotations.validation'
 
 const router = Router()
 
@@ -10,6 +10,12 @@ router.use(authMiddleware)
 
 // Quotations
 router.get('/', quotationsController.list)
+
+// Sub-routes MUST be before /:id to avoid parameter conflict
+router.get('/:id/pdf', quotationsController.downloadPdf)
+router.get('/:id/email/preview', quotationsController.previewEmail)
+router.post('/:id/email', validate(sendQuotationEmailSchema), quotationsController.sendEmail)
+
 router.get('/:id', quotationsController.getById)
 router.post('/', validate(createQuotationSchema), quotationsController.create)
 router.put('/:id', validate(updateQuotationSchema), quotationsController.update)

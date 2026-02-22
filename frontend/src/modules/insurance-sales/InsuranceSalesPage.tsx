@@ -3,10 +3,13 @@ import {
   Car, Heart, Shield, Home, Briefcase, Plane, Flame, Scale,
   Ship, Tractor, Star, Search, ArrowRight, ChevronRight,
   FileText, TrendingUp, Award, CheckCircle2, X, Plus,
-  Building2, Phone, Mail, DollarSign, Calculator
+  Building2, Phone, Mail, DollarSign, Calculator,
+  Pencil, Trash2, Download, Send
 } from 'lucide-react'
-import { api } from '../../api/client'
+import { api, getAuthHeaders } from '../../api/client'
+import { useAuthStore } from '../../store/authStore'
 import StatusBadge from '../../components/ui/StatusBadge'
+import EmailPreviewDialog from '../../components/EmailPreviewDialog'
 
 // ============ TYPES ============
 interface Category {
@@ -22,6 +25,7 @@ interface Category {
 
 interface Plan {
   id: number
+  productId?: number
   name: string
   tier: string
   description: string | null
@@ -33,6 +37,8 @@ interface Plan {
   deductible: string | null
   currency: string
   isPopular: boolean
+  isActive?: boolean
+  sortOrder?: number
 }
 
 interface Product {
@@ -158,10 +164,24 @@ export default function InsuranceSalesPage() {
   const [searchResults, setSearchResults] = useState<Product[]>([])
   const [isSearching, setIsSearching] = useState(false)
 
+  // Auth
+  const { user } = useAuthStore()
+  const isAdmin = user?.role === 'ADMINISTRADOR' || user?.globalRole === 'SUPER_ADMIN'
+
   // Quotation builder state
   const [showQuoteBuilder, setShowQuoteBuilder] = useState(false)
   const [quoteItems, setQuoteItems] = useState<QuotationItem[]>([])
   const [quoteClient, setQuoteClient] = useState({ name: '', email: '', phone: '' })
+  const [editingQuotationId, setEditingQuotationId] = useState<number | null>(null)
+
+  // Email dialog state
+  const [emailDialogOpen, setEmailDialogOpen] = useState(false)
+  const [emailQuotationId, setEmailQuotationId] = useState<number | null>(null)
+
+  // Plan CRUD state
+  const [showPlanModal, setShowPlanModal] = useState(false)
+  const [editingPlan, setEditingPlan] = useState<Plan | null>(null)
+  const [planProductId, setPlanProductId] = useState<number | null>(null)
 
   useEffect(() => {
     fetchInitialData()
@@ -251,7 +271,7 @@ export default function InsuranceSalesPage() {
   const submitQuotation = async () => {
     if (!quoteClient.name || quoteItems.length === 0) return
     try {
-      await api.post('/quotations', {
+      const payload = {
         clientName: quoteClient.name,
         clientEmail: quoteClient.email || undefined,
         clientPhone: quoteClient.phone || undefined,
@@ -261,13 +281,108 @@ export default function InsuranceSalesPage() {
           premium: item.premium,
           coverage: item.coverage,
         })),
-      })
+      }
+      if (editingQuotationId) {
+        await api.put(`/quotations/${editingQuotationId}`, payload)
+      } else {
+        await api.post('/quotations', payload)
+      }
       setQuoteItems([])
       setQuoteClient({ name: '', email: '', phone: '' })
+      setEditingQuotationId(null)
       setShowQuoteBuilder(false)
-      alert('Cotización creada exitosamente')
+      alert(editingQuotationId ? 'Cotización actualizada exitosamente' : 'Cotización creada exitosamente')
+      if (view === 'quotations') fetchQuotations()
     } catch (error: any) {
-      alert(error.message || 'Error al crear cotización')
+      alert(error.message || 'Error al guardar cotización')
+    }
+  }
+
+  const handleEditQuotation = async (id: number) => {
+    try {
+      const res = await api.get<{ success: boolean; data: any }>(`/quotations/${id}`)
+      const q = res.data
+      setQuoteClient({ name: q.clientName, email: q.clientEmail || '', phone: q.clientPhone || '' })
+      setQuoteItems(
+        (q.items || []).map((item: any) => ({
+          productId: item.productId,
+          planId: item.planId,
+          productName: item.product?.name || '',
+          planName: item.plan?.name || '',
+          planTier: item.plan?.tier || '',
+          insurerName: item.product?.insurer?.name || '',
+          premium: Number(item.premium),
+          coverage: item.coverage ? Number(item.coverage) : undefined,
+        }))
+      )
+      setEditingQuotationId(id)
+      setShowQuoteBuilder(true)
+    } catch (error: any) {
+      alert(error.message || 'Error al cargar cotización')
+    }
+  }
+
+  const handleDownloadPdf = async (id: number, quotationNo: string) => {
+    try {
+      const headers = await getAuthHeaders()
+      const API_BASE = import.meta.env.VITE_API_URL || '/api'
+      const res = await fetch(`${API_BASE}/quotations/${id}/pdf`, { headers })
+      if (!res.ok) throw new Error('Error al generar PDF')
+      const blob = await res.blob()
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `cotizacion-${quotationNo}.pdf`
+      a.click()
+      URL.revokeObjectURL(url)
+    } catch (error: any) {
+      alert(error.message || 'Error al descargar PDF')
+    }
+  }
+
+  // Plan CRUD handlers
+  const handleCreatePlan = (productId: number) => {
+    setPlanProductId(productId)
+    setEditingPlan(null)
+    setShowPlanModal(true)
+  }
+
+  const handleEditPlan = (plan: Plan) => {
+    setEditingPlan(plan)
+    setPlanProductId(null)
+    setShowPlanModal(true)
+  }
+
+  const handleDeletePlan = async (planId: number) => {
+    if (!confirm('¿Estás seguro de eliminar este plan?')) return
+    try {
+      await api.delete(`/insurance-catalog/plans/${planId}`)
+      // Refresh product view
+      if (selectedProduct) {
+        const res = await api.get<{ success: boolean; data: Product }>(`/insurance-catalog/products/${selectedProduct.id}`)
+        setSelectedProduct(res.data)
+      }
+    } catch (error: any) {
+      alert(error.message || 'Error al eliminar plan')
+    }
+  }
+
+  const handleSavePlan = async (data: any) => {
+    try {
+      if (editingPlan) {
+        await api.put(`/insurance-catalog/plans/${editingPlan.id}`, data)
+      } else {
+        await api.post('/insurance-catalog/plans', { ...data, productId: planProductId })
+      }
+      setShowPlanModal(false)
+      setEditingPlan(null)
+      // Refresh product view
+      if (selectedProduct) {
+        const res = await api.get<{ success: boolean; data: Product }>(`/insurance-catalog/products/${selectedProduct.id}`)
+        setSelectedProduct(res.data)
+      }
+    } catch (error: any) {
+      alert(error.message || 'Error al guardar plan')
     }
   }
 
@@ -387,8 +502,26 @@ export default function InsuranceSalesPage() {
       {/* MAIN CONTENT */}
       {view === 'catalog' && <CatalogView categories={categories} featured={featuredProducts} onCategoryClick={handleCategoryClick} onProductClick={handleProductClick} onAddToQuote={addToQuote} />}
       {view === 'category' && selectedCategory && <CategoryView category={selectedCategory} products={products} onProductClick={handleProductClick} onAddToQuote={addToQuote} onBack={() => setView('catalog')} />}
-      {view === 'product' && selectedProduct && <ProductView product={selectedProduct} onAddToQuote={addToQuote} onBack={() => selectedCategory ? setView('category') : setView('catalog')} />}
-      {view === 'quotations' && <QuotationsView quotations={quotations} onBack={() => setView('catalog')} />}
+      {view === 'product' && selectedProduct && (
+        <ProductView
+          product={selectedProduct}
+          onAddToQuote={addToQuote}
+          onBack={() => selectedCategory ? setView('category') : setView('catalog')}
+          isAdmin={isAdmin}
+          onCreatePlan={handleCreatePlan}
+          onEditPlan={handleEditPlan}
+          onDeletePlan={handleDeletePlan}
+        />
+      )}
+      {view === 'quotations' && (
+        <QuotationsView
+          quotations={quotations}
+          onBack={() => setView('catalog')}
+          onEdit={handleEditQuotation}
+          onDownloadPdf={handleDownloadPdf}
+          onEmail={(id) => { setEmailQuotationId(id); setEmailDialogOpen(true) }}
+        />
+      )}
 
       {/* QUOTATION BUILDER MODAL */}
       {showQuoteBuilder && (
@@ -398,7 +531,28 @@ export default function InsuranceSalesPage() {
           onClientChange={setQuoteClient}
           onRemoveItem={removeFromQuote}
           onSubmit={submitQuotation}
-          onClose={() => setShowQuoteBuilder(false)}
+          onClose={() => { setShowQuoteBuilder(false); setEditingQuotationId(null) }}
+          isEditing={!!editingQuotationId}
+        />
+      )}
+
+      {/* PLAN FORM MODAL */}
+      {showPlanModal && (
+        <PlanFormModal
+          plan={editingPlan}
+          onSave={handleSavePlan}
+          onClose={() => { setShowPlanModal(false); setEditingPlan(null) }}
+        />
+      )}
+
+      {/* EMAIL PREVIEW DIALOG */}
+      {emailQuotationId && (
+        <EmailPreviewDialog
+          isOpen={emailDialogOpen}
+          onClose={() => { setEmailDialogOpen(false); setEmailQuotationId(null) }}
+          previewEndpoint={`/quotations/${emailQuotationId}/email/preview`}
+          sendEndpoint={`/quotations/${emailQuotationId}/email`}
+          title="Enviar Cotización por Email"
         />
       )}
     </div>
@@ -657,10 +811,14 @@ function ProductCard({ product, onProductClick, onAddToQuote }: {
 }
 
 // ============ PRODUCT DETAIL VIEW ============
-function ProductView({ product, onAddToQuote, onBack }: {
+function ProductView({ product, onAddToQuote, onBack, isAdmin, onCreatePlan, onEditPlan, onDeletePlan }: {
   product: Product
   onAddToQuote: (prod: Product, plan: Plan) => void
   onBack: () => void
+  isAdmin: boolean
+  onCreatePlan: (productId: number) => void
+  onEditPlan: (plan: Plan) => void
+  onDeletePlan: (planId: number) => void
 }) {
   return (
     <div className="space-y-6">
@@ -687,10 +845,21 @@ function ProductView({ product, onAddToQuote, onBack }: {
 
       {/* Plans Comparison */}
       <div>
-        <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
-          <Award size={20} className="text-teal-400" />
-          Planes Disponibles
-        </h3>
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg font-bold text-white flex items-center gap-2">
+            <Award size={20} className="text-teal-400" />
+            Planes Disponibles
+          </h3>
+          {isAdmin && (
+            <button
+              onClick={() => onCreatePlan(product.id)}
+              className="flex items-center gap-2 px-3 py-1.5 bg-teal-600 hover:bg-teal-500 rounded-lg text-xs text-white font-medium transition-colors"
+            >
+              <Plus size={14} />
+              Agregar Plan
+            </button>
+          )}
+        </div>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {product.plans?.map(plan => (
             <div
@@ -702,6 +871,25 @@ function ProductView({ product, onAddToQuote, onBack }: {
               {plan.isPopular && (
                 <div className="absolute top-0 right-0 bg-teal-500 text-white text-[10px] font-bold px-3 py-1 rounded-bl-lg">
                   MÁS POPULAR
+                </div>
+              )}
+              {/* Admin actions */}
+              {isAdmin && (
+                <div className="absolute top-2 left-2 flex gap-1 z-10">
+                  <button
+                    onClick={() => onEditPlan(plan)}
+                    className="w-7 h-7 rounded-lg bg-slate-700/80 hover:bg-blue-600 flex items-center justify-center text-slate-300 hover:text-white transition-colors"
+                    title="Editar plan"
+                  >
+                    <Pencil size={12} />
+                  </button>
+                  <button
+                    onClick={() => onDeletePlan(plan.id)}
+                    className="w-7 h-7 rounded-lg bg-slate-700/80 hover:bg-red-600 flex items-center justify-center text-slate-300 hover:text-white transition-colors"
+                    title="Eliminar plan"
+                  >
+                    <Trash2 size={12} />
+                  </button>
                 </div>
               )}
               {/* Plan tier badge */}
@@ -803,7 +991,13 @@ function ProductView({ product, onAddToQuote, onBack }: {
 }
 
 // ============ QUOTATIONS VIEW ============
-function QuotationsView({ quotations, onBack }: { quotations: Quotation[]; onBack: () => void }) {
+function QuotationsView({ quotations, onBack, onEdit, onDownloadPdf, onEmail }: {
+  quotations: Quotation[]
+  onBack: () => void
+  onEdit: (id: number) => void
+  onDownloadPdf: (id: number, quotationNo: string) => void
+  onEmail: (id: number) => void
+}) {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
@@ -834,9 +1028,32 @@ function QuotationsView({ quotations, onBack }: { quotations: Quotation[]; onBac
                 <p className="text-sm text-slate-400">{q.clientName}</p>
                 <p className="text-xs text-slate-500">{new Date(q.createdAt).toLocaleDateString('es-DO')} · {q._count.items} productos</p>
               </div>
-              <div className="text-right">
-                <p className="text-lg font-bold text-teal-400">{formatCurrency(q.totalPremium)}</p>
-                <p className="text-xs text-slate-500">Prima Total</p>
+              <div className="flex items-center gap-3">
+                <div className="text-right mr-2">
+                  <p className="text-lg font-bold text-teal-400">{formatCurrency(q.totalPremium)}</p>
+                  <p className="text-xs text-slate-500">Prima Total</p>
+                </div>
+                <button
+                  onClick={() => onEdit(q.id)}
+                  className="w-9 h-9 rounded-lg bg-slate-700 hover:bg-blue-600 flex items-center justify-center text-slate-300 hover:text-white transition-colors"
+                  title="Editar cotización"
+                >
+                  <Pencil size={15} />
+                </button>
+                <button
+                  onClick={() => onDownloadPdf(q.id, q.quotationNo)}
+                  className="w-9 h-9 rounded-lg bg-slate-700 hover:bg-teal-600 flex items-center justify-center text-slate-300 hover:text-white transition-colors"
+                  title="Descargar PDF"
+                >
+                  <Download size={15} />
+                </button>
+                <button
+                  onClick={() => onEmail(q.id)}
+                  className="w-9 h-9 rounded-lg bg-slate-700 hover:bg-green-600 flex items-center justify-center text-slate-300 hover:text-white transition-colors"
+                  title="Enviar por email"
+                >
+                  <Send size={15} />
+                </button>
               </div>
             </div>
           ))}
@@ -847,13 +1064,14 @@ function QuotationsView({ quotations, onBack }: { quotations: Quotation[]; onBac
 }
 
 // ============ QUOTE BUILDER MODAL ============
-function QuoteBuilderModal({ items, client, onClientChange, onRemoveItem, onSubmit, onClose }: {
+function QuoteBuilderModal({ items, client, onClientChange, onRemoveItem, onSubmit, onClose, isEditing }: {
   items: QuotationItem[]
   client: { name: string; email: string; phone: string }
   onClientChange: (client: { name: string; email: string; phone: string }) => void
   onRemoveItem: (index: number) => void
   onSubmit: () => void
   onClose: () => void
+  isEditing?: boolean
 }) {
   const total = items.reduce((sum, item) => sum + item.premium, 0)
 
@@ -864,7 +1082,7 @@ function QuoteBuilderModal({ items, client, onClientChange, onRemoveItem, onSubm
         <div className="flex items-center justify-between p-5 border-b border-slate-700">
           <h3 className="text-lg font-bold text-white flex items-center gap-2">
             <Calculator size={20} className="text-teal-400" />
-            Nueva Cotización
+            {isEditing ? 'Editar Cotización' : 'Nueva Cotización'}
           </h3>
           <button onClick={onClose} className="text-slate-400 hover:text-white transition-colors">
             <X size={20} />
@@ -943,12 +1161,176 @@ function QuoteBuilderModal({ items, client, onClientChange, onRemoveItem, onSubm
               className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-teal-600 hover:bg-teal-500 disabled:bg-slate-700 disabled:text-slate-500 rounded-lg text-sm text-white font-medium transition-colors"
             >
               <FileText size={16} />
-              Crear Cotización
+              {isEditing ? 'Guardar Cambios' : 'Crear Cotización'}
             </button>
             <button
               onClick={onClose}
               className="px-6 py-3 bg-slate-700 hover:bg-slate-600 rounded-lg text-sm text-white transition-colors"
             >
+              Cancelar
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ============ PLAN FORM MODAL ============
+const TIER_OPTIONS = ['BASICO', 'INTERMEDIO', 'PREMIUM', 'FULL', 'SUPER_FULL'] as const
+
+function PlanFormModal({ plan, onSave, onClose }: {
+  plan: Plan | null
+  onSave: (data: any) => void
+  onClose: () => void
+}) {
+  const [form, setForm] = useState({
+    name: plan?.name || '',
+    tier: plan?.tier || 'BASICO',
+    description: plan?.description || '',
+    coverages: plan?.coverages?.join('\n') || '',
+    monthlyPremium: plan?.monthlyPremium || '',
+    annualPremium: plan?.annualPremium || '',
+    minCoverage: plan?.minCoverage || '',
+    maxCoverage: plan?.maxCoverage || '',
+    deductible: plan?.deductible || '',
+    currency: plan?.currency || 'DOP',
+    isPopular: plan?.isPopular || false,
+    sortOrder: plan?.sortOrder ?? 0,
+  })
+  const [saving, setSaving] = useState(false)
+
+  const handleSubmit = async () => {
+    if (!form.name || !form.monthlyPremium || !form.annualPremium) {
+      alert('Nombre, prima mensual y prima anual son requeridos')
+      return
+    }
+    setSaving(true)
+    try {
+      const coveragesArray = form.coverages
+        .split('\n')
+        .map(s => s.trim())
+        .filter(Boolean)
+
+      await onSave({
+        name: form.name,
+        tier: form.tier,
+        description: form.description || undefined,
+        coverages: coveragesArray,
+        monthlyPremium: parseFloat(form.monthlyPremium as string),
+        annualPremium: parseFloat(form.annualPremium as string),
+        minCoverage: form.minCoverage ? parseFloat(form.minCoverage as string) : undefined,
+        maxCoverage: form.maxCoverage ? parseFloat(form.maxCoverage as string) : undefined,
+        deductible: form.deductible ? parseFloat(form.deductible as string) : undefined,
+        currency: form.currency,
+        isPopular: form.isPopular,
+        sortOrder: form.sortOrder,
+      })
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const inputClass = "w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-teal-500/50"
+
+  return (
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+      <div className="bg-slate-800 border border-slate-700 rounded-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
+        <div className="flex items-center justify-between p-5 border-b border-slate-700">
+          <h3 className="text-lg font-bold text-white">
+            {plan ? 'Editar Plan' : 'Nuevo Plan'}
+          </h3>
+          <button onClick={onClose} className="text-slate-400 hover:text-white transition-colors">
+            <X size={20} />
+          </button>
+        </div>
+        <div className="p-5 space-y-4">
+          <div>
+            <label className="block text-xs text-slate-400 mb-1">Nombre *</label>
+            <input type="text" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} className={inputClass} placeholder="Plan Básico" />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs text-slate-400 mb-1">Nivel *</label>
+              <select value={form.tier} onChange={e => setForm({ ...form, tier: e.target.value })} className={inputClass}>
+                {TIER_OPTIONS.map(t => <option key={t} value={t}>{t}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs text-slate-400 mb-1">Moneda</label>
+              <select value={form.currency} onChange={e => setForm({ ...form, currency: e.target.value })} className={inputClass}>
+                <option value="DOP">DOP</option>
+                <option value="USD">USD</option>
+              </select>
+            </div>
+          </div>
+          <div>
+            <label className="block text-xs text-slate-400 mb-1">Descripción</label>
+            <input type="text" value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} className={inputClass} placeholder="Descripción del plan" />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs text-slate-400 mb-1">Prima Mensual *</label>
+              <input type="number" value={form.monthlyPremium} onChange={e => setForm({ ...form, monthlyPremium: e.target.value })} className={inputClass} placeholder="0.00" />
+            </div>
+            <div>
+              <label className="block text-xs text-slate-400 mb-1">Prima Anual *</label>
+              <input type="number" value={form.annualPremium} onChange={e => setForm({ ...form, annualPremium: e.target.value })} className={inputClass} placeholder="0.00" />
+            </div>
+          </div>
+          <div className="grid grid-cols-3 gap-3">
+            <div>
+              <label className="block text-xs text-slate-400 mb-1">Cob. Mínima</label>
+              <input type="number" value={form.minCoverage} onChange={e => setForm({ ...form, minCoverage: e.target.value })} className={inputClass} placeholder="0" />
+            </div>
+            <div>
+              <label className="block text-xs text-slate-400 mb-1">Cob. Máxima</label>
+              <input type="number" value={form.maxCoverage} onChange={e => setForm({ ...form, maxCoverage: e.target.value })} className={inputClass} placeholder="0" />
+            </div>
+            <div>
+              <label className="block text-xs text-slate-400 mb-1">Deducible</label>
+              <input type="number" value={form.deductible} onChange={e => setForm({ ...form, deductible: e.target.value })} className={inputClass} placeholder="0" />
+            </div>
+          </div>
+          <div>
+            <label className="block text-xs text-slate-400 mb-1">Coberturas (una por línea)</label>
+            <textarea
+              value={form.coverages}
+              onChange={e => setForm({ ...form, coverages: e.target.value })}
+              rows={4}
+              className={inputClass}
+              placeholder={"Responsabilidad civil\nDaños propios\nRobo total"}
+            />
+          </div>
+          <div className="flex items-center gap-4">
+            <label className="flex items-center gap-2 text-sm text-slate-300">
+              <input
+                type="checkbox"
+                checked={form.isPopular}
+                onChange={e => setForm({ ...form, isPopular: e.target.checked })}
+                className="rounded border-slate-600 bg-slate-700 text-teal-600 focus:ring-teal-500"
+              />
+              Popular
+            </label>
+            <div className="flex items-center gap-2">
+              <label className="text-xs text-slate-400">Orden:</label>
+              <input
+                type="number"
+                value={form.sortOrder}
+                onChange={e => setForm({ ...form, sortOrder: parseInt(e.target.value) || 0 })}
+                className="w-16 px-2 py-1 bg-slate-900 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:ring-2 focus:ring-teal-500/50"
+              />
+            </div>
+          </div>
+          <div className="flex items-center gap-3 pt-2">
+            <button
+              onClick={handleSubmit}
+              disabled={saving}
+              className="flex-1 px-4 py-2.5 bg-teal-600 hover:bg-teal-500 disabled:bg-slate-700 rounded-lg text-sm text-white font-medium transition-colors"
+            >
+              {saving ? 'Guardando...' : plan ? 'Guardar Cambios' : 'Crear Plan'}
+            </button>
+            <button onClick={onClose} className="px-6 py-2.5 bg-slate-700 hover:bg-slate-600 rounded-lg text-sm text-white transition-colors">
               Cancelar
             </button>
           </div>

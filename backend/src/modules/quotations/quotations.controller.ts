@@ -1,5 +1,8 @@
 import { Request, Response } from 'express'
 import quotationsService from './quotations.service'
+import { generateQuotationPDF } from '../../services/pdf/quotation.pdf'
+import { sendEmailWithDebug, formatEmailErrorResponse } from '../../utils/emailHelper'
+import { quotationEmailTemplate } from '../../utils/emailTemplates'
 
 class QuotationsController {
   async list(req: Request, res: Response) {
@@ -132,6 +135,139 @@ class QuotationsController {
       return res.json({ success: true, data: proposal })
     } catch (error: any) {
       return res.status(500).json({ success: false, message: error.message })
+    }
+  }
+
+  async downloadPdf(req: Request, res: Response) {
+    try {
+      const id = parseInt(req.params.id as string)
+      const pdfBuffer = await generateQuotationPDF(id)
+      res.setHeader('Content-Type', 'application/pdf')
+      res.setHeader('Content-Disposition', `attachment; filename="cotizacion-${id}.pdf"`)
+      res.send(pdfBuffer)
+    } catch (error: any) {
+      return res.status(500).json({ success: false, message: error.message })
+    }
+  }
+
+  async previewEmail(req: Request, res: Response) {
+    try {
+      const companyId = req.user?.companyId
+      const id = parseInt(req.params.id as string)
+      const { recipients, includeAttachment } = req.query
+
+      const quotation = await quotationsService.findById(id, companyId)
+      if (!quotation) {
+        return res.status(404).json({ success: false, message: 'Cotización no encontrada' })
+      }
+
+      const emailRecipients: string[] = []
+      const recipientsList = typeof recipients === 'string' ? recipients.split(',') : []
+      if (recipientsList.includes('client') && quotation.clientEmail) {
+        emailRecipients.push(quotation.clientEmail)
+      }
+      if (recipientsList.includes('internal')) {
+        emailRecipients.push(process.env.INTERNAL_EMAIL || 'admin@seguropro.com')
+      }
+
+      const emailTemplate = quotationEmailTemplate({
+        clientName: quotation.clientName,
+        quotationNo: quotation.quotationNo,
+        totalPremium: Number(quotation.totalPremium),
+        currency: quotation.currency,
+        validUntil: quotation.validUntil ? quotation.validUntil.toISOString() : undefined,
+        items: quotation.items.map((item: any) => ({
+          productName: item.product?.name || '',
+          insurerName: item.product?.insurer?.name || '',
+          planName: item.plan?.name || '',
+          planTier: item.plan?.tier || '',
+          premium: Number(item.premium),
+        })),
+      })
+
+      res.json({
+        success: true,
+        data: {
+          recipients: emailRecipients,
+          subject: emailTemplate.subject,
+          html: emailTemplate.html,
+          hasAttachment: includeAttachment === 'true',
+          quotationNo: quotation.quotationNo,
+        },
+      })
+    } catch (error: any) {
+      return res.status(500).json({ success: false, message: error.message })
+    }
+  }
+
+  async sendEmail(req: Request, res: Response) {
+    try {
+      const companyId = req.user?.companyId
+      const id = parseInt(req.params.id as string)
+      const { recipients, includeAttachment, customSubject, customHtml } = req.body
+
+      const quotation = await quotationsService.findById(id, companyId)
+      if (!quotation) {
+        return res.status(404).json({ success: false, message: 'Cotización no encontrada' })
+      }
+
+      const emailRecipients: string[] = []
+      if (recipients.includes('client') && quotation.clientEmail) {
+        emailRecipients.push(quotation.clientEmail)
+      }
+      if (recipients.includes('internal')) {
+        emailRecipients.push(process.env.INTERNAL_EMAIL || 'admin@seguropro.com')
+      }
+
+      if (emailRecipients.length === 0) {
+        return res.status(400).json({ success: false, message: 'No se encontraron destinatarios con email válido' })
+      }
+
+      let attachments = undefined
+      if (includeAttachment) {
+        const pdfBuffer = await generateQuotationPDF(id)
+        attachments = [{
+          filename: `cotizacion-${quotation.quotationNo}.pdf`,
+          content: pdfBuffer,
+          contentType: 'application/pdf',
+        }]
+      }
+
+      const emailTemplate = quotationEmailTemplate({
+        clientName: quotation.clientName,
+        quotationNo: quotation.quotationNo,
+        totalPremium: Number(quotation.totalPremium),
+        currency: quotation.currency,
+        validUntil: quotation.validUntil ? quotation.validUntil.toISOString() : undefined,
+        items: quotation.items.map((item: any) => ({
+          productName: item.product?.name || '',
+          insurerName: item.product?.insurer?.name || '',
+          planName: item.plan?.name || '',
+          planTier: item.plan?.tier || '',
+          premium: Number(item.premium),
+        })),
+      })
+
+      const result = await sendEmailWithDebug(
+        {
+          to: emailRecipients,
+          subject: customSubject || emailTemplate.subject,
+          html: customHtml || emailTemplate.html,
+          attachments,
+        },
+        { module: 'quotations', action: 'send_quotation', recordId: id }
+      )
+
+      // Update status to ENVIADA
+      try {
+        await quotationsService.updateStatus(id, companyId, 'ENVIADA')
+      } catch (_) {
+        // Non-critical: email was sent even if status update fails
+      }
+
+      res.json(result)
+    } catch (error: any) {
+      res.status(500).json(formatEmailErrorResponse(error))
     }
   }
 

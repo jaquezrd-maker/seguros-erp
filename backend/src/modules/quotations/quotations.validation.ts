@@ -40,6 +40,15 @@ export const updateQuotationSchema = z.object({
   }),
 })
 
+export const sendQuotationEmailSchema = z.object({
+  body: z.object({
+    recipients: z.array(z.string()).min(1, 'Debe seleccionar al menos un destinatario'),
+    includeAttachment: z.boolean().default(true),
+    customSubject: z.string().optional(),
+    customHtml: z.string().optional(),
+  }),
+})
+
 export const createProposalSchema = z.object({
   body: z.object({
     quotationId: z.number().optional(),

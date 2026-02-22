@@ -71,6 +71,35 @@ class InsuranceCatalogController {
     }
   }
 
+  async createPlan(req: Request, res: Response) {
+    try {
+      const plan = await catalogService.createPlan(req.body)
+      return res.status(201).json({ success: true, data: plan })
+    } catch (error: any) {
+      return res.status(500).json({ success: false, message: error.message })
+    }
+  }
+
+  async updatePlan(req: Request, res: Response) {
+    try {
+      const id = parseInt(req.params.planId as string)
+      const plan = await catalogService.updatePlan(id, req.body)
+      return res.json({ success: true, data: plan })
+    } catch (error: any) {
+      return res.status(500).json({ success: false, message: error.message })
+    }
+  }
+
+  async deletePlan(req: Request, res: Response) {
+    try {
+      const id = parseInt(req.params.planId as string)
+      await catalogService.deletePlan(id)
+      return res.json({ success: true, message: 'Plan eliminado' })
+    } catch (error: any) {
+      return res.status(500).json({ success: false, message: error.message })
+    }
+  }
+
   async searchProducts(req: Request, res: Response) {
     try {
       const { q } = req.query
