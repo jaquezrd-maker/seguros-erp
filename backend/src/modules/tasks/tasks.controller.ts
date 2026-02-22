@@ -24,7 +24,7 @@ export const tasksController = {
   async getById(req: Request, res: Response, next: NextFunction) {
     try {
       const userId = req.user!.id
-      const id = parseInt(req.params.id)
+      const id = parseInt(req.params.id as string)
       const task = await service.findById(id, userId)
       res.json({ success: true, data: task })
     } catch (error) {
@@ -46,7 +46,7 @@ export const tasksController = {
   async update(req: Request, res: Response, next: NextFunction) {
     try {
       const userId = req.user!.id
-      const id = parseInt(req.params.id)
+      const id = parseInt(req.params.id as string)
       const task = await service.update(id, userId, req.body)
       res.json({ success: true, data: task })
     } catch (error) {
@@ -57,7 +57,7 @@ export const tasksController = {
   async toggleComplete(req: Request, res: Response, next: NextFunction) {
     try {
       const userId = req.user!.id
-      const id = parseInt(req.params.id)
+      const id = parseInt(req.params.id as string)
       const task = await service.toggleComplete(id, userId)
       res.json({ success: true, data: task })
     } catch (error) {

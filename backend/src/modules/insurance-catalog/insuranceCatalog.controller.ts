@@ -13,7 +13,7 @@ class InsuranceCatalogController {
 
   async getCategoryBySlug(req: Request, res: Response) {
     try {
-      const { slug } = req.params
+      const slug = req.params.slug as string
       const category = await catalogService.getCategoryBySlug(slug)
       if (!category) {
         return res.status(404).json({ success: false, message: 'Categoría no encontrada' })
@@ -41,7 +41,7 @@ class InsuranceCatalogController {
 
   async getProductById(req: Request, res: Response) {
     try {
-      const id = parseInt(req.params.id)
+      const id = parseInt(req.params.id as string)
       const product = await catalogService.getProductById(id)
       if (!product) {
         return res.status(404).json({ success: false, message: 'Producto no encontrado' })
@@ -54,7 +54,7 @@ class InsuranceCatalogController {
 
   async getProductPlans(req: Request, res: Response) {
     try {
-      const productId = parseInt(req.params.id)
+      const productId = parseInt(req.params.id as string)
       const plans = await catalogService.getProductPlans(productId)
       return res.json({ success: true, data: plans })
     } catch (error: any) {

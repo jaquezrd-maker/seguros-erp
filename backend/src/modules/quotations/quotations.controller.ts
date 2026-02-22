@@ -21,7 +21,7 @@ class QuotationsController {
   async getById(req: Request, res: Response) {
     try {
       const companyId = req.user?.companyId
-      const id = parseInt(req.params.id)
+      const id = parseInt(req.params.id as string)
       const quotation = await quotationsService.findById(id, companyId)
       if (!quotation) {
         return res.status(404).json({ success: false, message: 'Cotización no encontrada' })
@@ -49,7 +49,7 @@ class QuotationsController {
   async update(req: Request, res: Response) {
     try {
       const companyId = req.user?.companyId
-      const id = parseInt(req.params.id)
+      const id = parseInt(req.params.id as string)
       const quotation = await quotationsService.update(id, companyId, req.body)
       return res.json({ success: true, data: quotation })
     } catch (error: any) {
@@ -60,7 +60,7 @@ class QuotationsController {
   async updateStatus(req: Request, res: Response) {
     try {
       const companyId = req.user?.companyId
-      const id = parseInt(req.params.id)
+      const id = parseInt(req.params.id as string)
       const { status } = req.body
       const quotation = await quotationsService.updateStatus(id, companyId, status)
       return res.json({ success: true, data: quotation })
@@ -72,7 +72,7 @@ class QuotationsController {
   async delete(req: Request, res: Response) {
     try {
       const companyId = req.user?.companyId
-      const id = parseInt(req.params.id)
+      const id = parseInt(req.params.id as string)
       await quotationsService.delete(id, companyId)
       return res.json({ success: true, message: 'Cotización eliminada' })
     } catch (error: any) {
@@ -98,7 +98,7 @@ class QuotationsController {
   async getProposalById(req: Request, res: Response) {
     try {
       const companyId = req.user?.companyId
-      const id = parseInt(req.params.id)
+      const id = parseInt(req.params.id as string)
       const proposal = await quotationsService.findProposalById(id, companyId)
       if (!proposal) {
         return res.status(404).json({ success: false, message: 'Propuesta no encontrada' })
@@ -126,7 +126,7 @@ class QuotationsController {
   async updateProposalStatus(req: Request, res: Response) {
     try {
       const companyId = req.user?.companyId
-      const id = parseInt(req.params.id)
+      const id = parseInt(req.params.id as string)
       const { status } = req.body
       const proposal = await quotationsService.updateProposalStatus(id, companyId, status)
       return res.json({ success: true, data: proposal })
@@ -139,7 +139,7 @@ class QuotationsController {
     try {
       const companyId = req.user?.companyId
       const userId = req.user!.id
-      const quotationId = parseInt(req.params.id)
+      const quotationId = parseInt(req.params.id as string)
       if (!companyId) {
         return res.status(400).json({ success: false, message: 'Empresa activa requerida' })
       }

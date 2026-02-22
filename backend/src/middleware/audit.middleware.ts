@@ -21,7 +21,7 @@ export function auditMiddleware(entityType: string) {
               newValues: req.method !== 'DELETE' ? req.body : undefined,
               ipAddress: req.ip || null,
               userAgent: req.get('User-Agent') || null,
-            },
+            } as any,
           }).catch(console.error)
         }
       }
