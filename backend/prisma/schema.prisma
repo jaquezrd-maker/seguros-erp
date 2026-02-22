@@ -177,6 +177,8 @@ model Company {
   clientContacts    ClientContact[]
   insurerBranches   InsurerBranch[]
   clientInvitations ClientInvitation[]
+  quotations        Quotation[]
+  proposals         Proposal[]
 
   @@index([status])
   @@index([slug])
@@ -249,6 +251,8 @@ model Client {
   contacts          ClientContact[]
   events            Event[]
   clientInvitations ClientInvitation[]
+  quotations        Quotation[]
+  proposals         Proposal[]
 
   @@unique([companyId, cedulaRnc])
   @@index([companyId])
@@ -291,6 +295,7 @@ model Insurer {
   policies        Policy[]
   branches        InsurerBranch[]
   commissionRules CommissionRule[]
+  products        InsuranceProduct[]
 
   @@unique([companyId, rnc])
   @@index([companyId])
@@ -557,6 +562,8 @@ model User {
   events             Event[]
   tasks              Task[]
   invitationsCreated ClientInvitation[] @relation("InvitationCreator")
+  quotations         Quotation[]       @relation("QuotationCreator")
+  proposals          Proposal[]        @relation("ProposalCreator")
 
   @@map("users")
 }
@@ -683,6 +690,23 @@ enum TaskPriority {
   URGENTE
 }
 
+enum QuotationStatus {
+  BORRADOR
+  ENVIADA
+  ACEPTADA
+  RECHAZADA
+  EXPIRADA
+}
+
+enum ProposalStatus {
+  BORRADOR
+  ENVIADA
+  EN_REVISION
+  ACEPTADA
+  RECHAZADA
+  EMITIDA
+}
+
 model ClientInvitation {
   id        Int      @id @default(autoincrement())
   companyId Int      @default(1) @map("company_id")
@@ -703,4 +727,154 @@ model ClientInvitation {
   @@index([email])
   @@index([clientId])
   @@map("client_invitations")
+}
+
+// ===================== INSURANCE CATALOG MODELS =====================
+
+model InsuranceCategory {
+  id          Int     @id @default(autoincrement())
+  name        String  @unique @db.VarChar(100)
+  slug        String  @unique @db.VarChar(100)
+  description String? @db.Text
+  icon        String? @db.VarChar(50) // Lucide icon name
+  color       String? @db.VarChar(20) // Hex color
+  imageUrl    String? @map("image_url") @db.VarChar(500)
+  sortOrder   Int     @default(0) @map("sort_order")
+  isActive    Boolean @default(true) @map("is_active")
+
+  products InsuranceProduct[]
+
+  @@index([isActive])
+  @@map("insurance_categories")
+}
+
+model InsuranceProduct {
+  id              Int     @id @default(autoincrement())
+  categoryId      Int     @map("category_id")
+  insurerId       Int     @map("insurer_id")
+  name            String  @db.VarChar(200)
+  slug            String  @db.VarChar(200)
+  description     String? @db.Text
+  shortDesc       String? @map("short_desc") @db.VarChar(300)
+  imageUrl        String? @map("image_url") @db.VarChar(500)
+  isActive        Boolean @default(true) @map("is_active")
+  isFeatured      Boolean @default(false) @map("is_featured")
+  sortOrder       Int     @default(0) @map("sort_order")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  category InsuranceCategory @relation(fields: [categoryId], references: [id])
+  insurer  Insurer            @relation(fields: [insurerId], references: [id])
+  plans    InsurancePlan[]
+  quotationItems QuotationItem[]
+
+  @@unique([insurerId, slug])
+  @@index([categoryId])
+  @@index([insurerId])
+  @@index([isActive])
+  @@index([isFeatured])
+  @@map("insurance_products")
+}
+
+model InsurancePlan {
+  id                Int      @id @default(autoincrement())
+  productId         Int      @map("product_id")
+  name              String   @db.VarChar(200)
+  tier              String   @db.VarChar(50) // BASICO, INTERMEDIO, PREMIUM, FULL
+  description       String?  @db.Text
+  coverages         Json?    // Array of coverage descriptions
+  monthlyPremium    Decimal? @map("monthly_premium") @db.Decimal(12, 2)
+  annualPremium     Decimal? @map("annual_premium") @db.Decimal(12, 2)
+  minCoverage       Decimal? @map("min_coverage") @db.Decimal(14, 2) // Min coverage amount
+  maxCoverage       Decimal? @map("max_coverage") @db.Decimal(14, 2) // Max coverage amount
+  deductible        Decimal? @db.Decimal(12, 2)
+  currency          String   @default("DOP") @db.VarChar(3)
+  isPopular         Boolean  @default(false) @map("is_popular")
+  isActive          Boolean  @default(true) @map("is_active")
+  sortOrder         Int      @default(0) @map("sort_order")
+
+  product       InsuranceProduct @relation(fields: [productId], references: [id], onDelete: Cascade)
+  quotationItems QuotationItem[]
+
+  @@index([productId])
+  @@index([tier])
+  @@map("insurance_plans")
+}
+
+model Quotation {
+  id            Int             @id @default(autoincrement())
+  companyId     Int             @map("company_id")
+  quotationNo   String          @map("quotation_no") @db.VarChar(30)
+  clientId      Int?            @map("client_id")
+  clientName    String          @map("client_name") @db.VarChar(200)
+  clientEmail   String?         @map("client_email") @db.VarChar(150)
+  clientPhone   String?         @map("client_phone") @db.VarChar(20)
+  status        QuotationStatus @default(BORRADOR)
+  totalPremium  Decimal         @map("total_premium") @db.Decimal(12, 2)
+  currency      String          @default("DOP") @db.VarChar(3)
+  notes         String?         @db.Text
+  validUntil    DateTime?       @map("valid_until") @db.Date
+  createdBy     Int             @map("created_by")
+  createdAt     DateTime        @default(now()) @map("created_at")
+  updatedAt     DateTime        @updatedAt @map("updated_at")
+
+  company  Company         @relation(fields: [companyId], references: [id])
+  client   Client?         @relation(fields: [clientId], references: [id])
+  creator  User            @relation("QuotationCreator", fields: [createdBy], references: [id])
+  items    QuotationItem[]
+  proposals Proposal[]
+
+  @@unique([companyId, quotationNo])
+  @@index([companyId])
+  @@index([companyId, status])
+  @@index([companyId, clientId])
+  @@map("quotations")
+}
+
+model QuotationItem {
+  id            Int      @id @default(autoincrement())
+  quotationId   Int      @map("quotation_id")
+  productId     Int      @map("product_id")
+  planId        Int      @map("plan_id")
+  premium       Decimal  @db.Decimal(12, 2)
+  coverage      Decimal? @db.Decimal(14, 2)
+  deductible    Decimal? @db.Decimal(12, 2)
+  details       Json?    // Additional details
+
+  quotation Quotation        @relation(fields: [quotationId], references: [id], onDelete: Cascade)
+  product   InsuranceProduct @relation(fields: [productId], references: [id])
+  plan      InsurancePlan    @relation(fields: [planId], references: [id])
+
+  @@index([quotationId])
+  @@map("quotation_items")
+}
+
+model Proposal {
+  id            Int            @id @default(autoincrement())
+  companyId     Int            @map("company_id")
+  proposalNo    String         @map("proposal_no") @db.VarChar(30)
+  quotationId   Int?           @map("quotation_id")
+  clientId      Int?           @map("client_id")
+  clientName    String         @map("client_name") @db.VarChar(200)
+  clientEmail   String?        @map("client_email") @db.VarChar(150)
+  status        ProposalStatus @default(BORRADOR)
+  totalPremium  Decimal        @map("total_premium") @db.Decimal(12, 2)
+  currency      String         @default("DOP") @db.VarChar(3)
+  coverageSummary Json?        @map("coverage_summary") // Summary of all coverages
+  terms         String?        @db.Text
+  notes         String?        @db.Text
+  validUntil    DateTime?      @map("valid_until") @db.Date
+  createdBy     Int            @map("created_by")
+  createdAt     DateTime       @default(now()) @map("created_at")
+  updatedAt     DateTime       @updatedAt @map("updated_at")
+
+  company   Company    @relation(fields: [companyId], references: [id])
+  client    Client?    @relation(fields: [clientId], references: [id])
+  quotation Quotation? @relation(fields: [quotationId], references: [id])
+  creator   User       @relation("ProposalCreator", fields: [createdBy], references: [id])
+
+  @@unique([companyId, proposalNo])
+  @@index([companyId])
+  @@index([companyId, status])
+  @@map("proposals")
 }

@@ -1,8 +1,9 @@
-import { Home, Users, Building2, Shield, RefreshCw, AlertTriangle, CreditCard, DollarSign, Lock, BarChart3, Menu, Bell, Brain, Briefcase, Settings } from "lucide-react"
+import { Home, Users, Building2, Shield, RefreshCw, AlertTriangle, CreditCard, DollarSign, Lock, BarChart3, Menu, Bell, Brain, Briefcase, Settings, ShoppingCart } from "lucide-react"
 import { useAuthStore } from "../../store/authStore"
 
 const baseMenuItems = [
   { id: "dashboard", label: "Dashboard", icon: Home },
+  { id: "insurance-sales", label: "Venta de Seguros", icon: ShoppingCart },
   { id: "ai", label: "Asistente IA", icon: Brain },
   { id: "clients", label: "Clientes", icon: Users },
   { id: "insurers", label: "Aseguradoras", icon: Building2 },

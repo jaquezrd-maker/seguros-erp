@@ -31,6 +31,8 @@ import clientPortalRoutes from './modules/client-portal/client-portal.routes'
 import portalDataRoutes from './modules/client-portal-data/portal-data.routes'
 import companiesRoutes from './modules/companies/companies.routes'
 import permissionsRoutes from './modules/permissions/permissions.routes'
+import insuranceCatalogRoutes from './modules/insurance-catalog/insuranceCatalog.routes'
+import quotationsRoutes from './modules/quotations/quotations.routes'
 
 const app = express()
 
@@ -122,6 +124,8 @@ app.use('/api/ai', aiRoutes)
 app.use('/api/events', eventRoutes)
 app.use('/api/tasks', taskRoutes)
 app.use('/api/permissions', permissionsRoutes)
+app.use('/api/insurance-catalog', insuranceCatalogRoutes)
+app.use('/api/quotations', quotationsRoutes)
 app.use('/api/test', testRoutes)
 
 // Error handler (must be last)

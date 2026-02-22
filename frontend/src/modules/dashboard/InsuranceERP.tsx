@@ -16,9 +16,11 @@ import NotificationManager from "../notifications/NotificationManager"
 import AIAssistantPage from "../ai/AIAssistantPage"
 import CompaniesPage from "../companies/CompaniesPage"
 import PermissionsPage from "../permissions/PermissionsPage"
+import InsuranceSalesPage from "../insurance-sales/InsuranceSalesPage"
 
 const titles: Record<string, string> = {
   dashboard: "Dashboard",
+  "insurance-sales": "Venta de Seguros",
   clients: "Clientes",
   insurers: "Aseguradoras",
   policies: "Pólizas",
@@ -46,6 +48,7 @@ export default function InsuranceERP() {
   const renderModule = () => {
     switch (activeModule) {
       case "dashboard": return <DashboardPage />
+      case "insurance-sales": return <InsuranceSalesPage />
       case "clients": return <ClientsPage />
       case "insurers": return <InsurersPage />
       case "policies": return <PoliciesPage />
