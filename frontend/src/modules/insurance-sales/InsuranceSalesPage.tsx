@@ -637,8 +637,8 @@ function ProductCard({ product, onProductClick, onAddToQuote }: {
             </button>
           </div>
         ))}
-        {product._count.plans > 3 && (
-          <p className="text-[10px] text-slate-500">+{product._count.plans - 3} planes más</p>
+        {(product._count?.plans ?? 0) > 3 && (
+          <p className="text-[10px] text-slate-500">+{(product._count?.plans ?? 0) - 3} planes más</p>
         )}
       </div>
 

@@ -93,6 +93,7 @@ class InsuranceCatalogService {
         category: { select: { id: true, name: true, slug: true, icon: true, color: true } },
         insurer: { select: { id: true, name: true } },
         plans: { where: { isActive: true }, orderBy: { sortOrder: 'asc' }, take: 3 },
+        _count: { select: { plans: true } },
       },
       orderBy: { sortOrder: 'asc' },
       take: 8,
@@ -115,6 +116,7 @@ class InsuranceCatalogService {
         category: { select: { id: true, name: true, slug: true, icon: true, color: true } },
         insurer: { select: { id: true, name: true } },
         plans: { where: { isActive: true }, take: 1 },
+        _count: { select: { plans: true } },
       },
       take: 20,
     })
