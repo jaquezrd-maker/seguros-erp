@@ -89,15 +89,15 @@ function getIcon(name: string | null) {
 
 // ============ CATEGORY IMAGES ============
 const categoryImages: Record<string, string> = {
-  'vehiculos': 'https://images.unsplash.com/photo-1549317661-bd32c8ce0afa?w=600&q=80',
+  'vehiculos': 'https://images.unsplash.com/photo-1492144534655-ae79c964c9d7?w=600&q=80',
   'salud': 'https://images.unsplash.com/photo-1576091160399-112ba8d25d1d?w=600&q=80',
   'vida': 'https://images.unsplash.com/photo-1511895426328-dc8714191300?w=600&q=80',
   'hogar': 'https://images.unsplash.com/photo-1564013799919-ab600027ffc6?w=600&q=80',
   'empresarial': 'https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?w=600&q=80',
   'viaje': 'https://images.unsplash.com/photo-1488646953014-85cb44e25828?w=600&q=80',
-  'incendio': 'https://images.unsplash.com/photo-1486175060817-5663caa69b57?w=600&q=80',
+  'incendio': 'https://images.unsplash.com/photo-1487887235947-a955ef187fcc?w=600&q=80',
   'responsabilidad-civil': 'https://images.unsplash.com/photo-1589829545856-d10d557cf95f?w=600&q=80',
-  'transporte': 'https://images.unsplash.com/photo-1494412574643-ff11b0a5eb19?w=600&q=80',
+  'transporte': 'https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?w=600&q=80',
   'agropecuario': 'https://images.unsplash.com/photo-1500382017468-9049fed747ef?w=600&q=80',
   'fianzas': 'https://images.unsplash.com/photo-1450101499163-c8848c66ca85?w=600&q=80',
 }

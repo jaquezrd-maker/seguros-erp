@@ -20,38 +20,102 @@
   color: var(--text-primary) !important;
 }
 
-/* Main backgrounds */
+/* ==========================================
+   BACKGROUNDS
+   ========================================== */
+
+/* Solid dark backgrounds → white */
 .light .bg-slate-950,
 .light .bg-slate-900,
+.light .bg-slate-800 {
+  background-color: var(--bg-secondary) !important;
+}
+
+/* Semi-transparent dark backgrounds → white or subtle gray */
 .light .bg-slate-900\/95,
 .light .bg-slate-900\/80,
-.light .bg-slate-800,
-.light .bg-slate-800\/95 {
+.light .bg-slate-800\/95,
+.light .bg-slate-800\/80 {
   background-color: var(--bg-secondary) !important;
-  border-color: var(--border-color) !important;
 }
 
 .light .bg-slate-800\/50,
+.light .bg-slate-800\/30 {
+  background-color: var(--bg-tertiary) !important;
+}
+
 .light .bg-slate-700,
 .light .bg-slate-700\/50 {
   background-color: var(--bg-tertiary) !important;
+}
+
+.light .bg-slate-700\/30,
+.light .bg-slate-700\/20 {
+  background-color: rgba(241, 245, 249, 0.7) !important;
+}
+
+.light .bg-slate-900\/50 {
+  background-color: rgba(248, 250, 252, 0.95) !important;
 }
 
 .light .bg-slate-600 {
   background-color: #cbd5e1 !important;
 }
 
-/* Sidebar in light mode */
-.light aside.bg-slate-900 {
-  background-color: #ffffff !important;
-  border-right: 1px solid var(--border-color) !important;
+/* Modal overlays - keep semi-transparent but lighter */
+.light .bg-black\/60,
+.light .bg-black\/50 {
+  background-color: rgba(0, 0, 0, 0.3) !important;
 }
 
-.light aside.bg-slate-900 .border-slate-700\/50 {
+/* Cards and panels — add subtle shadow for contrast on white */
+.light .bg-slate-800\/50.backdrop-blur-xl,
+.light .bg-slate-800\/50.rounded-2xl {
+  background-color: var(--bg-secondary) !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0, 0, 0, 0.06) !important;
+}
+
+/* ==========================================
+   SIDEBAR
+   ========================================== */
+.light aside.bg-slate-900,
+.light aside {
+  background-color: #ffffff !important;
+  border-right-color: var(--border-color) !important;
+}
+
+/* Sidebar active item */
+.light .bg-teal-500\/15 {
+  background-color: rgba(20, 184, 166, 0.1) !important;
+}
+
+/* Sidebar collapse button */
+.light .bg-slate-800.border.border-slate-700 {
+  background-color: var(--bg-secondary) !important;
   border-color: var(--border-color) !important;
 }
 
-/* Text colors */
+/* ==========================================
+   TOPBAR
+   ========================================== */
+
+/* TopBar glass effect → solid white with bottom border */
+.light header,
+.light .bg-slate-900\/80.backdrop-blur-xl {
+  background-color: rgba(255, 255, 255, 0.95) !important;
+  border-color: var(--border-color) !important;
+}
+
+/* Company badge */
+.light .bg-teal-500\/20 {
+  background-color: rgba(20, 184, 166, 0.1) !important;
+}
+
+/* ==========================================
+   TEXT COLORS
+   ========================================== */
+
+/* Main text */
 .light .text-white,
 .light .text-slate-100,
 .light .text-slate-200 {
@@ -71,16 +135,75 @@
   color: var(--text-muted) !important;
 }
 
-/* Borders */
+/* Teal accents — darken for readability on white backgrounds */
+.light .text-teal-300 {
+  color: #0f766e !important; /* teal-700 */
+}
+
+.light .text-teal-400 {
+  color: #0d9488 !important; /* teal-600 */
+}
+
+.light .text-teal-500 {
+  color: #0f766e !important; /* teal-700 */
+}
+
+/* Blue accents */
+.light .text-blue-400 {
+  color: #2563eb !important; /* blue-600 */
+}
+
+.light .text-blue-300 {
+  color: #3b82f6 !important; /* blue-500 */
+}
+
+/* Cyan accents */
+.light .text-cyan-400 {
+  color: #0891b2 !important; /* cyan-600 */
+}
+
+.light .text-cyan-300 {
+  color: #0e7490 !important; /* cyan-700 */
+}
+
+/* Green accents */
+.light .text-green-400,
+.light .text-emerald-400 {
+  color: #059669 !important; /* emerald-600 */
+}
+
+/* Yellow/Amber accents */
+.light .text-yellow-400,
+.light .text-amber-400 {
+  color: #d97706 !important; /* amber-600 */
+}
+
+/* Red accents */
+.light .text-red-400 {
+  color: #dc2626 !important; /* red-600 */
+}
+
+/* Purple accents */
+.light .text-purple-400 {
+  color: #7c3aed !important; /* violet-600 */
+}
+
+/* ==========================================
+   BORDERS
+   ========================================== */
+
 .light .border-slate-800,
 .light .border-slate-700,
 .light .border-slate-700\/50,
-.light .border-slate-600 {
+.light .border-slate-700\/30,
+.light .border-slate-600,
+.light .border-slate-600\/50 {
   border-color: var(--border-color) !important;
 }
 
 .light .border-b.border-slate-700,
-.light .border-b.border-slate-700\/50 {
+.light .border-b.border-slate-700\/50,
+.light .border-b.border-slate-700\/30 {
   border-bottom-color: var(--border-color) !important;
 }
 
@@ -88,12 +211,31 @@
   border-left-color: var(--border-color) !important;
 }
 
+.light .border-r.border-slate-700\/50,
+.light .border-r.border-slate-700 {
+  border-right-color: var(--border-color) !important;
+}
+
+/* Divide colors */
 .light .divide-slate-800,
-.light .divide-slate-700 {
+.light .divide-slate-700,
+.light .divide-slate-700\/50,
+.light .divide-slate-700\/30 {
   border-color: var(--border-color) !important;
 }
 
-/* Form elements */
+.light [class*="divide-slate-700\/30"] > * + * {
+  border-color: var(--border-color) !important;
+}
+
+.light [class*="divide-slate-700"] > * + * {
+  border-color: var(--border-color) !important;
+}
+
+/* ==========================================
+   FORM ELEMENTS
+   ========================================== */
+
 .light input,
 .light select,
 .light textarea {
@@ -114,7 +256,28 @@
   color: var(--text-tertiary) !important;
 }
 
-/* Hover states */
+/* Form elements with explicit dark classes */
+.light .bg-slate-700.border-slate-600,
+.light .bg-slate-900.border-slate-700 {
+  background-color: var(--bg-secondary) !important;
+  border-color: var(--border-color) !important;
+}
+
+/* Checkbox styling */
+.light input[type="checkbox"] {
+  background-color: var(--bg-secondary) !important;
+  border-color: #cbd5e1 !important;
+}
+
+/* Ring offset for focus states */
+.light .focus\:ring-offset-slate-800:focus {
+  --tw-ring-offset-color: #ffffff !important;
+}
+
+/* ==========================================
+   HOVER STATES
+   ========================================== */
+
 .light .hover\:bg-slate-800:hover,
 .light .hover\:bg-slate-700:hover {
   background-color: var(--bg-hover) !important;
@@ -128,6 +291,10 @@
   background-color: #e2e8f0 !important;
 }
 
+.light .hover\:bg-slate-700\/50:hover {
+  background-color: var(--bg-hover) !important;
+}
+
 .light .hover\:border-slate-600:hover {
   border-color: var(--border-hover) !important;
 }
@@ -136,7 +303,19 @@
   color: var(--text-primary) !important;
 }
 
-/* Navigation menu items in light mode */
+.light .hover\:text-teal-300:hover {
+  color: #0f766e !important;
+}
+
+.light .hover\:text-teal-400:hover {
+  color: #0d9488 !important;
+}
+
+/* ==========================================
+   NAVIGATION
+   ========================================== */
+
+/* Nav menu items */
 .light button.text-slate-400 {
   color: var(--text-tertiary) !important;
 }
@@ -145,44 +324,160 @@
   color: var(--text-primary) !important;
 }
 
-/* Buttons - preserve their colors but adjust hover */
+/* Active nav background */
+.light .bg-teal-500\/10 {
+  background-color: rgba(20, 184, 166, 0.08) !important;
+}
+
+/* ==========================================
+   BUTTONS
+   ========================================== */
+
+/* Teal buttons */
 .light button.bg-teal-600:hover,
 .light button.hover\:bg-teal-500:hover {
   background-color: #0d9488 !important;
 }
 
+/* Blue buttons */
 .light button.bg-blue-600:hover,
 .light button.hover\:bg-blue-500:hover {
   background-color: #2563eb !important;
 }
 
+/* Red buttons */
 .light button.bg-red-600:hover,
 .light button.hover\:bg-red-500:hover {
   background-color: #dc2626 !important;
 }
 
-/* Stat cards and special backgrounds */
+/* Slate ghost buttons */
+.light .bg-slate-700.hover\:bg-slate-600:hover {
+  background-color: #e2e8f0 !important;
+}
+
+/* Button backgrounds that were dark */
+.light button.bg-slate-700,
+.light button.bg-slate-800,
+.light a.bg-slate-700,
+.light a.bg-slate-800 {
+  background-color: var(--bg-tertiary) !important;
+  color: var(--text-primary) !important;
+}
+
+/* ==========================================
+   STAT CARDS & SPECIAL BACKGROUNDS
+   ========================================== */
+
 .light .bg-cyan-500\/10 {
-  background-color: rgba(6, 182, 212, 0.1) !important;
+  background-color: rgba(6, 182, 212, 0.08) !important;
 }
 
 .light .bg-purple-500\/10 {
-  background-color: rgba(168, 85, 247, 0.1) !important;
+  background-color: rgba(168, 85, 247, 0.08) !important;
 }
 
 .light .bg-emerald-500\/10 {
-  background-color: rgba(16, 185, 129, 0.1) !important;
+  background-color: rgba(16, 185, 129, 0.08) !important;
 }
 
 .light .bg-rose-500\/10 {
-  background-color: rgba(244, 63, 94, 0.1) !important;
+  background-color: rgba(244, 63, 94, 0.08) !important;
 }
 
 .light .bg-orange-500\/10 {
-  background-color: rgba(249, 115, 22, 0.1) !important;
+  background-color: rgba(249, 115, 22, 0.08) !important;
 }
 
-/* Scrollbar for light mode */
+.light .bg-blue-500\/10 {
+  background-color: rgba(59, 130, 246, 0.08) !important;
+}
+
+.light .bg-indigo-500\/10 {
+  background-color: rgba(99, 102, 241, 0.08) !important;
+}
+
+.light .bg-amber-500\/10 {
+  background-color: rgba(245, 158, 11, 0.08) !important;
+}
+
+.light .bg-red-500\/10 {
+  background-color: rgba(239, 68, 68, 0.08) !important;
+}
+
+.light .bg-green-500\/10 {
+  background-color: rgba(34, 197, 94, 0.08) !important;
+}
+
+.light .bg-yellow-500\/10 {
+  background-color: rgba(234, 179, 8, 0.08) !important;
+}
+
+/* StatusBadge backgrounds */
+.light .bg-slate-500\/15 {
+  background-color: rgba(100, 116, 139, 0.1) !important;
+}
+
+/* Alert backgrounds */
+.light .bg-red-500\/10,
+.light .bg-red-900\/20 {
+  background-color: rgba(239, 68, 68, 0.08) !important;
+}
+
+.light .bg-green-500\/10,
+.light .bg-green-900\/20 {
+  background-color: rgba(34, 197, 94, 0.08) !important;
+}
+
+/* ==========================================
+   MODAL & DIALOG
+   ========================================== */
+
+/* Modal content box */
+.light .bg-slate-800.border-slate-700 {
+  background-color: var(--bg-secondary) !important;
+  border-color: var(--border-color) !important;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.15) !important;
+}
+
+/* Modal header border */
+.light .border-b.border-slate-700 {
+  border-bottom-color: var(--border-color) !important;
+}
+
+/* ==========================================
+   DATA TABLE
+   ========================================== */
+
+/* Table header */
+.light .bg-slate-800\/80,
+.light .bg-slate-900\/50 {
+  background-color: var(--bg-tertiary) !important;
+}
+
+/* Table row hover */
+.light tr.hover\:bg-slate-800\/30:hover,
+.light .hover\:bg-slate-800\/30:hover {
+  background-color: rgba(241, 245, 249, 0.6) !important;
+}
+
+.light .hover\:bg-slate-800\/50:hover {
+  background-color: var(--bg-hover) !important;
+}
+
+/* ==========================================
+   CALENDAR
+   ========================================== */
+
+.light .bg-slate-800\/50.rounded-xl {
+  background-color: var(--bg-secondary) !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08) !important;
+}
+
+/* ==========================================
+   SCROLLBAR
+   ========================================== */
+
 .light ::-webkit-scrollbar-track {
   background: var(--bg-tertiary);
 }
@@ -195,3 +490,51 @@
   background: #94a3b8;
 }
 
+/* ==========================================
+   MISC / UTILITY
+   ========================================== */
+
+/* Placeholder text in dark-themed elements */
+.light .placeholder-slate-500::placeholder,
+.light .placeholder\:text-slate-500::placeholder {
+  color: var(--text-tertiary) !important;
+}
+
+/* Selection background */
+.light ::selection {
+  background-color: rgba(20, 184, 166, 0.2);
+  color: var(--text-primary);
+}
+
+/* Backdrop blur elements on light - ensure solid white behind blur */
+.light .backdrop-blur-xl,
+.light .backdrop-blur-sm {
+  backdrop-filter: blur(8px) !important;
+}
+
+/* Code/monospace blocks */
+.light pre,
+.light code {
+  background-color: var(--bg-tertiary) !important;
+  color: var(--text-primary) !important;
+}
+
+/* Tooltip-like small dark panels */
+.light .bg-slate-900.rounded-lg,
+.light .bg-slate-900.rounded-xl {
+  background-color: var(--bg-secondary) !important;
+  border: 1px solid var(--border-color) !important;
+}
+
+/* Ensure all rounded cards with dark bg get light treatment */
+.light .rounded-2xl.border.border-slate-700\/50 {
+  border-color: var(--border-color) !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06) !important;
+}
+
+/* Dropdown menus */
+.light .bg-slate-800.rounded-xl.border.border-slate-700 {
+  background-color: var(--bg-secondary) !important;
+  border-color: var(--border-color) !important;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1) !important;
+}
